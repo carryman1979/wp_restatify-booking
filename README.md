@@ -2,7 +2,7 @@
 
 WordPress plugin for manual appointment slot search and reservation popup.
 
-Version: 1.2.0
+Version: 1.2.1
 
 ## Features
 
@@ -77,6 +77,10 @@ Weekly availability lines:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 1.2.1
+
+- Added clearer admin field descriptions for timezone, duration, search window, and autoresponder fields.
 
 ### 1.2.0
 

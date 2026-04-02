@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -731,15 +731,24 @@ final class Restatify_Booking_Assistant {
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Default timezone', 'restatify-booking-assistant'); ?></th>
-                        <td><input class="regular-text" type="text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[default_timezone]" value="<?php echo esc_attr((string) $options['default_timezone']); ?>"></td>
+                        <td>
+                            <input class="regular-text" type="text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[default_timezone]" value="<?php echo esc_attr((string) $options['default_timezone']); ?>">
+                            <p class="description"><?php esc_html_e('Timezone used for slot search, booking timestamps and autoresponder placeholders. Example: Europe/Berlin.', 'restatify-booking-assistant'); ?></p>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Default duration (minutes)', 'restatify-booking-assistant'); ?></th>
-                        <td><input class="small-text" type="number" min="15" max="180" step="15" name="<?php echo esc_attr(self::OPTION_KEY); ?>[default_duration_minutes]" value="<?php echo esc_attr((string) $options['default_duration_minutes']); ?>"></td>
+                        <td>
+                            <input class="small-text" type="number" min="15" max="180" step="15" name="<?php echo esc_attr(self::OPTION_KEY); ?>[default_duration_minutes]" value="<?php echo esc_attr((string) $options['default_duration_minutes']); ?>">
+                            <p class="description"><?php esc_html_e('Defines booking length. Only slots long enough for this duration are offered and reservations are created with this value.', 'restatify-booking-assistant'); ?></p>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Search window (days)', 'restatify-booking-assistant'); ?></th>
-                        <td><input class="small-text" type="number" min="1" max="60" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[slot_window_days]" value="<?php echo esc_attr((string) $options['slot_window_days']); ?>"></td>
+                        <td>
+                            <input class="small-text" type="number" min="1" max="60" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[slot_window_days]" value="<?php echo esc_attr((string) $options['slot_window_days']); ?>">
+                            <p class="description"><?php esc_html_e('How many days ahead the popup searches for free slots. Higher values show more options but can increase response time.', 'restatify-booking-assistant'); ?></p>
+                        </td>
                     </tr>
                 </table>
 
@@ -780,12 +789,16 @@ final class Restatify_Booking_Assistant {
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Autoresponder subject', 'restatify-booking-assistant'); ?></th>
-                        <td><input class="regular-text" type="text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[autoresponder_subject]" value="<?php echo esc_attr((string) $options['autoresponder_subject']); ?>"></td>
+                        <td>
+                            <input class="regular-text" type="text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[autoresponder_subject]" value="<?php echo esc_attr((string) $options['autoresponder_subject']); ?>">
+                            <p class="description"><?php esc_html_e('Email subject sent to the visitor after successful reservation.', 'restatify-booking-assistant'); ?></p>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Autoresponder body', 'restatify-booking-assistant'); ?></th>
                         <td>
                             <textarea class="large-text code" rows="8" name="<?php echo esc_attr(self::OPTION_KEY); ?>[autoresponder_body]"><?php echo esc_textarea((string) $options['autoresponder_body']); ?></textarea>
+                            <p class="description"><?php esc_html_e('Plain text message body. The system replaces placeholders with actual booking data.', 'restatify-booking-assistant'); ?></p>
                             <p class="description"><?php esc_html_e('Placeholders: {name}, {email}, {start}, {end}, {timezone}, {note}, {reference}', 'restatify-booking-assistant'); ?></p>
                         </td>
                     </tr>

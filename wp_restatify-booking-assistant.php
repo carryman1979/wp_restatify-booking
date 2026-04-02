@@ -541,11 +541,16 @@ final class Restatify_Booking_Assistant {
             if (!in_array($privacy_mode, ['private', 'official'], true)) {
                 $privacy_mode = 'private';
             }
+            $calendar_type = strtolower(sanitize_key((string) ($parts[3] ?? 'general')));
+            if (!in_array($calendar_type, ['general', 'holiday'], true)) {
+                $calendar_type = 'general';
+            }
 
             $sources[] = [
                 'calendar_id' => $calendar_id,
                 'label' => $label,
                 'privacy_mode' => $privacy_mode,
+                'calendar_type' => $calendar_type,
             ];
         }
 
@@ -629,8 +634,9 @@ final class Restatify_Booking_Assistant {
                         <th scope="row"><?php esc_html_e('Calendars to sync', 'restatify-booking-assistant'); ?></th>
                         <td>
                             <textarea class="large-text code" rows="6" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_calendar_sources_raw]"><?php echo esc_textarea((string) ($options['api_calendar_sources_raw'] ?? '')); ?></textarea>
-                            <p class="description"><?php esc_html_e('One calendar per line: calendar_id|Label|private or official', 'restatify-booking-assistant'); ?></p>
-                            <p class="description"><?php esc_html_e('Example: company-calendar@group.calendar.google.com|Company Main|official', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('One calendar per line: calendar_id|Label|private or official|general or holiday', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('Example: company-calendar@group.calendar.google.com|Company Main|official|general', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('Holiday example: de.german#holiday@group.v.calendar.google.com|DE Holidays|official|holiday', 'restatify-booking-assistant'); ?></p>
                         </td>
                     </tr>
                     <tr>

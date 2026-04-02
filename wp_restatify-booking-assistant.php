@@ -15,12 +15,15 @@ if (!defined('ABSPATH')) {
 final class Restatify_Booking_Assistant {
     private const OPTION_KEY = 'restatify_booking_assistant_options';
     private const NONCE_ACTION = 'restatify_booking_assistant_nonce';
+    private const ADMIN_NOTICE_TRANSIENT = 'restatify_booking_assistant_admin_notice';
 
     public function __construct() {
         add_action('init', [$this, 'register_shortcode']);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_menu', [$this, 'register_admin_page']);
+        add_action('admin_notices', [$this, 'render_admin_notice']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('update_option_' . self::OPTION_KEY, [$this, 'handle_options_updated'], 10, 2);
 
         add_action('wp_ajax_restatify_booking_find_slots', [$this, 'ajax_find_slots']);
         add_action('wp_ajax_nopriv_restatify_booking_find_slots', [$this, 'ajax_find_slots']);
@@ -211,7 +214,67 @@ final class Restatify_Booking_Assistant {
         }
     }
 
-    private function request_api(string $path, array $payload) {
+    public function handle_options_updated($old_value, $new_value): void {
+        if (!is_array($new_value)) {
+            return;
+        }
+
+        $result = $this->push_sync_config_to_api($new_value);
+        if (is_wp_error($result)) {
+            set_transient(self::ADMIN_NOTICE_TRANSIENT, [
+                'type' => 'error',
+                'message' => sprintf(
+                    __('Sync configuration could not be sent to API: %s', 'restatify-booking-assistant'),
+                    $result->get_error_message()
+                ),
+            ], 60);
+
+            return;
+        }
+
+        set_transient(self::ADMIN_NOTICE_TRANSIENT, [
+            'type' => 'success',
+            'message' => __('Sync configuration was updated in Booking API.', 'restatify-booking-assistant'),
+        ], 60);
+    }
+
+    public function render_admin_notice(): void {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        if (!isset($_GET['page']) || sanitize_key((string) $_GET['page']) !== 'restatify-booking-assistant') {
+            return;
+        }
+
+        $notice = get_transient(self::ADMIN_NOTICE_TRANSIENT);
+        if (!is_array($notice) || empty($notice['message'])) {
+            return;
+        }
+
+        delete_transient(self::ADMIN_NOTICE_TRANSIENT);
+
+        $type = (string) ($notice['type'] ?? 'info');
+        if (!in_array($type, ['success', 'error', 'warning', 'info'], true)) {
+            $type = 'info';
+        }
+
+        echo '<div class="notice notice-' . esc_attr($type) . ' is-dismissible"><p>' . esc_html((string) $notice['message']) . '</p></div>';
+    }
+
+    private function push_sync_config_to_api(array $options) {
+        $calendar_sources = is_array($options['api_calendar_sources'] ?? null) ? $options['api_calendar_sources'] : [];
+
+        $payload = [
+            'sync_enabled' => !empty($options['api_sync_enabled']),
+            'sync_interval_minutes' => max(5, min(720, absint($options['api_sync_interval_minutes'] ?? 15))),
+            'calendar_sources' => $calendar_sources,
+        ];
+
+        return $this->request_api('/v1/config/sync', $payload, 'PUT');
+    }
+
+    private function request_api(string $path, array $payload = [], string $method = 'POST') {
         $options = $this->get_options();
         $base_url = rtrim((string) $options['api_base_url'], '/');
         $url = $base_url . $path;
@@ -224,11 +287,17 @@ final class Restatify_Booking_Assistant {
             $headers['X-API-Key'] = (string) $options['api_key'];
         }
 
-        $response = wp_remote_post($url, [
+        $args = [
             'timeout' => 15,
             'headers' => $headers,
-            'body' => wp_json_encode($payload),
-        ]);
+            'method' => strtoupper($method),
+        ];
+
+        if (count($payload) > 0) {
+            $args['body'] = wp_json_encode($payload);
+        }
+
+        $response = wp_remote_request($url, $args);
 
         if (is_wp_error($response)) {
             return $response;
@@ -334,15 +403,57 @@ final class Restatify_Booking_Assistant {
         $defaults = $this->get_default_options();
         $input = is_array($input) ? $input : [];
 
+        $calendar_sources_raw = sanitize_textarea_field((string) ($input['api_calendar_sources_raw'] ?? $defaults['api_calendar_sources_raw']));
+        $calendar_sources = $this->parse_calendar_sources_raw($calendar_sources_raw);
+
         return [
             'api_base_url' => esc_url_raw((string) ($input['api_base_url'] ?? $defaults['api_base_url'])),
             'api_key' => sanitize_text_field((string) ($input['api_key'] ?? $defaults['api_key'])),
             'default_timezone' => sanitize_text_field((string) ($input['default_timezone'] ?? $defaults['default_timezone'])),
             'default_duration_minutes' => max(15, min(180, absint($input['default_duration_minutes'] ?? $defaults['default_duration_minutes']))),
             'slot_window_days' => max(1, min(60, absint($input['slot_window_days'] ?? $defaults['slot_window_days']))),
+            'api_sync_enabled' => !empty($input['api_sync_enabled']),
+            'api_sync_interval_minutes' => max(5, min(720, absint($input['api_sync_interval_minutes'] ?? $defaults['api_sync_interval_minutes']))),
+            'api_calendar_sources_raw' => $calendar_sources_raw,
+            'api_calendar_sources' => $calendar_sources,
             'autoresponder_subject' => sanitize_text_field((string) ($input['autoresponder_subject'] ?? $defaults['autoresponder_subject'])),
             'autoresponder_body' => sanitize_textarea_field((string) ($input['autoresponder_body'] ?? $defaults['autoresponder_body'])),
         ];
+    }
+
+    private function parse_calendar_sources_raw(string $raw): array {
+        $lines = preg_split('/\r\n|\r|\n/', $raw);
+        if (!is_array($lines)) {
+            return [];
+        }
+
+        $sources = [];
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+
+            $parts = array_map('trim', explode('|', $line));
+            $calendar_id = sanitize_text_field((string) ($parts[0] ?? ''));
+            if ($calendar_id === '') {
+                continue;
+            }
+
+            $label = sanitize_text_field((string) ($parts[1] ?? $calendar_id));
+            $privacy_mode = strtolower(sanitize_key((string) ($parts[2] ?? 'private')));
+            if (!in_array($privacy_mode, ['private', 'official'], true)) {
+                $privacy_mode = 'private';
+            }
+
+            $sources[] = [
+                'calendar_id' => $calendar_id,
+                'label' => $label,
+                'privacy_mode' => $privacy_mode,
+            ];
+        }
+
+        return $sources;
     }
 
     private function get_options(): array {
@@ -361,6 +472,10 @@ final class Restatify_Booking_Assistant {
             'default_timezone' => wp_timezone_string() ?: 'Europe/Berlin',
             'default_duration_minutes' => 30,
             'slot_window_days' => 14,
+            'api_sync_enabled' => true,
+            'api_sync_interval_minutes' => 15,
+            'api_calendar_sources_raw' => '',
+            'api_calendar_sources' => [],
             'autoresponder_subject' => __('Your Restatify appointment reservation', 'restatify-booking-assistant'),
             'autoresponder_body' => "Hallo {name},\n\nvielen Dank fuer deine Reservierung.\n\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nReferenz: {reference}\n\nViele Gruesse\nRestatify",
         ];
@@ -398,6 +513,27 @@ final class Restatify_Booking_Assistant {
                     <tr>
                         <th scope="row"><?php esc_html_e('Search window (days)', 'restatify-booking-assistant'); ?></th>
                         <td><input class="small-text" type="number" min="1" max="60" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[slot_window_days]" value="<?php echo esc_attr((string) $options['slot_window_days']); ?>"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Enable API sync', 'restatify-booking-assistant'); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_sync_enabled]" value="1" <?php checked(!empty($options['api_sync_enabled'])); ?>>
+                                <?php esc_html_e('Allow API to run calendar free/busy synchronization.', 'restatify-booking-assistant'); ?>
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Sync interval (minutes)', 'restatify-booking-assistant'); ?></th>
+                        <td><input class="small-text" type="number" min="5" max="720" step="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_sync_interval_minutes]" value="<?php echo esc_attr((string) $options['api_sync_interval_minutes']); ?>"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Calendars to sync', 'restatify-booking-assistant'); ?></th>
+                        <td>
+                            <textarea class="large-text code" rows="6" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_calendar_sources_raw]"><?php echo esc_textarea((string) ($options['api_calendar_sources_raw'] ?? '')); ?></textarea>
+                            <p class="description"><?php esc_html_e('One calendar per line: calendar_id|Label|private or official', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('Example: company-calendar@group.calendar.google.com|Company Main|official', 'restatify-booking-assistant'); ?></p>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Autoresponder subject', 'restatify-booking-assistant'); ?></th>

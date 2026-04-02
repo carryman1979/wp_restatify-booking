@@ -264,11 +264,13 @@ final class Restatify_Booking_Assistant {
 
     private function push_sync_config_to_api(array $options) {
         $calendar_sources = is_array($options['api_calendar_sources'] ?? null) ? $options['api_calendar_sources'] : [];
+        $availability_rules = is_array($options['api_availability_rules'] ?? null) ? $options['api_availability_rules'] : [];
 
         $payload = [
             'sync_enabled' => !empty($options['api_sync_enabled']),
             'sync_interval_minutes' => max(5, min(720, absint($options['api_sync_interval_minutes'] ?? 15))),
             'calendar_sources' => $calendar_sources,
+            'availability_rules' => $availability_rules,
         ];
 
         return $this->request_api('/v1/config/sync', $payload, 'PUT');
@@ -405,6 +407,8 @@ final class Restatify_Booking_Assistant {
 
         $calendar_sources_raw = sanitize_textarea_field((string) ($input['api_calendar_sources_raw'] ?? $defaults['api_calendar_sources_raw']));
         $calendar_sources = $this->parse_calendar_sources_raw($calendar_sources_raw);
+        $availability_raw = sanitize_textarea_field((string) ($input['api_availability_raw'] ?? $defaults['api_availability_raw']));
+        $availability_rules = $this->parse_availability_raw($availability_raw);
 
         return [
             'api_base_url' => esc_url_raw((string) ($input['api_base_url'] ?? $defaults['api_base_url'])),
@@ -416,9 +420,101 @@ final class Restatify_Booking_Assistant {
             'api_sync_interval_minutes' => max(5, min(720, absint($input['api_sync_interval_minutes'] ?? $defaults['api_sync_interval_minutes']))),
             'api_calendar_sources_raw' => $calendar_sources_raw,
             'api_calendar_sources' => $calendar_sources,
+            'api_availability_raw' => $availability_raw,
+            'api_availability_rules' => $availability_rules,
             'autoresponder_subject' => sanitize_text_field((string) ($input['autoresponder_subject'] ?? $defaults['autoresponder_subject'])),
             'autoresponder_body' => sanitize_textarea_field((string) ($input['autoresponder_body'] ?? $defaults['autoresponder_body'])),
         ];
+    }
+
+    private function parse_availability_raw(string $raw): array {
+        $weekday_map = [
+            'mo' => 0,
+            'di' => 1,
+            'mi' => 2,
+            'do' => 3,
+            'fr' => 4,
+            'sa' => 5,
+            'so' => 6,
+            'mon' => 0,
+            'tue' => 1,
+            'wed' => 2,
+            'thu' => 3,
+            'fri' => 4,
+            'sat' => 5,
+            'sun' => 6,
+        ];
+
+        $lines = preg_split('/\r\n|\r|\n/', $raw);
+        if (!is_array($lines)) {
+            return [];
+        }
+
+        $by_day = [];
+
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+
+            $parts = array_map('trim', explode('|', $line, 2));
+            $day_key = strtolower((string) ($parts[0] ?? ''));
+            if (!array_key_exists($day_key, $weekday_map)) {
+                continue;
+            }
+
+            $weekday = (int) $weekday_map[$day_key];
+            $ranges_raw = (string) ($parts[1] ?? '');
+            if ($ranges_raw === '') {
+                continue;
+            }
+
+            $ranges = array_map('trim', explode(',', $ranges_raw));
+            foreach ($ranges as $range) {
+                if ($range === '' || strpos($range, '-') === false) {
+                    continue;
+                }
+
+                [$start, $end] = array_map('trim', explode('-', $range, 2));
+                if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $start) || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $end)) {
+                    continue;
+                }
+
+                if ($start >= $end) {
+                    continue;
+                }
+
+                if (!isset($by_day[$weekday])) {
+                    $by_day[$weekday] = [];
+                }
+
+                $by_day[$weekday][] = [
+                    'start' => $start,
+                    'end' => $end,
+                ];
+            }
+        }
+
+        ksort($by_day);
+
+        $rules = [];
+        foreach ($by_day as $weekday => $windows) {
+            if (count($windows) === 0) {
+                continue;
+            }
+
+            usort($windows, static function ($a, $b) {
+                return strcmp((string) $a['start'], (string) $b['start']);
+            });
+
+            $rules[] = [
+                'weekday' => (int) $weekday,
+                'windows' => $windows,
+            ];
+        }
+
+        return $rules;
     }
 
     private function parse_calendar_sources_raw(string $raw): array {
@@ -476,6 +572,8 @@ final class Restatify_Booking_Assistant {
             'api_sync_interval_minutes' => 15,
             'api_calendar_sources_raw' => '',
             'api_calendar_sources' => [],
+            'api_availability_raw' => "mo|09:00-12:00,13:00-17:00\ndi|09:00-12:00,13:00-17:00\nmi|09:00-12:00,13:00-17:00\ndo|09:00-12:00,13:00-17:00\nfr|09:00-12:00,13:00-17:00",
+            'api_availability_rules' => [],
             'autoresponder_subject' => __('Your Restatify appointment reservation', 'restatify-booking-assistant'),
             'autoresponder_body' => "Hallo {name},\n\nvielen Dank fuer deine Reservierung.\n\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nReferenz: {reference}\n\nViele Gruesse\nRestatify",
         ];
@@ -533,6 +631,14 @@ final class Restatify_Booking_Assistant {
                             <textarea class="large-text code" rows="6" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_calendar_sources_raw]"><?php echo esc_textarea((string) ($options['api_calendar_sources_raw'] ?? '')); ?></textarea>
                             <p class="description"><?php esc_html_e('One calendar per line: calendar_id|Label|private or official', 'restatify-booking-assistant'); ?></p>
                             <p class="description"><?php esc_html_e('Example: company-calendar@group.calendar.google.com|Company Main|official', 'restatify-booking-assistant'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Weekly availability rules', 'restatify-booking-assistant'); ?></th>
+                        <td>
+                            <textarea class="large-text code" rows="7" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_availability_raw]"><?php echo esc_textarea((string) ($options['api_availability_raw'] ?? '')); ?></textarea>
+                            <p class="description"><?php esc_html_e('One line per weekday. Format: day|HH:MM-HH:MM,HH:MM-HH:MM', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('Allowed days: mo, di, mi, do, fr, sa, so (or mon..sun). Example: mi|09:00-12:00,13:00-16:30', 'restatify-booking-assistant'); ?></p>
                         </td>
                     </tr>
                     <tr>

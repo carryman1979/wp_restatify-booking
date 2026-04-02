@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -12,23 +12,68 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!defined('RESTATIFY_BOOKING_OPEN_TOKEN')) {
+    define('RESTATIFY_BOOKING_OPEN_TOKEN', '[[RESTATIFY_BOOKING_OPEN]]');
+}
+
 final class Restatify_Booking_Assistant {
     private const OPTION_KEY = 'restatify_booking_assistant_options';
     private const NONCE_ACTION = 'restatify_booking_assistant_nonce';
     private const ADMIN_NOTICE_TRANSIENT = 'restatify_booking_assistant_admin_notice';
+    private const BOOKING_TRIGGER_HASH = '#restatify-booking';
+    private const POLYLANG_GROUP = 'Restatify Booking Assistant';
 
     public function __construct() {
+        add_action('init', [$this, 'load_textdomain']);
         add_action('init', [$this, 'register_shortcode']);
         add_action('admin_init', [$this, 'register_settings']);
+        add_action('admin_init', [$this, 'register_polylang_strings']);
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_notices', [$this, 'render_admin_notice']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('wp_footer', [$this, 'render_global_popup'], 30);
         add_action('update_option_' . self::OPTION_KEY, [$this, 'handle_options_updated'], 10, 2);
+        add_filter('wp_link_query', [$this, 'extend_wp_link_query'], 10, 2);
 
         add_action('wp_ajax_restatify_booking_find_slots', [$this, 'ajax_find_slots']);
         add_action('wp_ajax_nopriv_restatify_booking_find_slots', [$this, 'ajax_find_slots']);
         add_action('wp_ajax_restatify_booking_reserve_slot', [$this, 'ajax_reserve_slot']);
         add_action('wp_ajax_nopriv_restatify_booking_reserve_slot', [$this, 'ajax_reserve_slot']);
+    }
+
+    public function load_textdomain(): void {
+        load_plugin_textdomain(
+            'restatify-booking-assistant',
+            false,
+            dirname(plugin_basename(__FILE__)) . '/languages'
+        );
+    }
+
+    public function register_polylang_strings(): void {
+        if (!function_exists('pll_register_string')) {
+            return;
+        }
+
+        $saved = get_option(self::OPTION_KEY, []);
+        if (!is_array($saved)) {
+            $saved = [];
+        }
+
+        $options = wp_parse_args($saved, $this->get_default_options());
+
+        pll_register_string(
+            'Booking autoresponder subject',
+            (string) ($options['autoresponder_subject'] ?? ''),
+            self::POLYLANG_GROUP,
+            false
+        );
+
+        pll_register_string(
+            'Booking autoresponder body',
+            (string) ($options['autoresponder_body'] ?? ''),
+            self::POLYLANG_GROUP,
+            true
+        );
     }
 
     public function register_shortcode(): void {
@@ -58,12 +103,7 @@ final class Restatify_Booking_Assistant {
     }
 
     public function enqueue_assets(): void {
-        if (!is_singular()) {
-            return;
-        }
-
-        global $post;
-        if (!$post || !has_shortcode((string) $post->post_content, 'restatify_booking_popup')) {
+        if (is_admin()) {
             return;
         }
 
@@ -89,9 +129,11 @@ final class Restatify_Booking_Assistant {
         wp_localize_script('restatify-booking-assistant', 'restatifyBookingAssistant', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(self::NONCE_ACTION),
+            'chatNonce' => wp_create_nonce('restatify_mco_chat_nonce'),
             'timezone' => (string) $options['default_timezone'],
             'durationMinutes' => (int) $options['default_duration_minutes'],
             'windowDays' => (int) $options['slot_window_days'],
+            'triggerHash' => self::BOOKING_TRIGGER_HASH,
             'strings' => [
                 'loading' => __('Searching free slots...', 'restatify-booking-assistant'),
                 'empty' => __('No free slots found in this period.', 'restatify-booking-assistant'),
@@ -108,14 +150,59 @@ final class Restatify_Booking_Assistant {
             'title' => __('Book a conversation', 'restatify-booking-assistant'),
         ], $atts, 'restatify_booking_popup');
 
+        return $this->render_popup_markup((string) $atts['label'], (string) $atts['title'], true, false);
+    }
+
+    public function render_global_popup(): void {
+        if (is_admin() || is_feed()) {
+            return;
+        }
+
+        echo $this->render_popup_markup(
+            __('Find appointment', 'restatify-booking-assistant'),
+            __('Book a conversation', 'restatify-booking-assistant'),
+            false,
+            true
+        );
+    }
+
+    public function extend_wp_link_query(array $results, array $query): array {
+        if (!current_user_can('edit_posts')) {
+            return $results;
+        }
+
+        $search = strtolower(trim((string) ($query['s'] ?? '')));
+        $matches_booking = $search === ''
+            || str_contains($search, 'book')
+            || str_contains($search, 'termin')
+            || str_contains($search, 'slot')
+            || str_contains($search, 'appoint');
+
+        if (!$matches_booking) {
+            return $results;
+        }
+
+        $results[] = [
+            'ID' => 0,
+            'title' => __('Booking Popup (Restatify)', 'restatify-booking-assistant'),
+            'permalink' => home_url('/') . self::BOOKING_TRIGGER_HASH,
+            'info' => __('Opens the Restatify booking overlay on click.', 'restatify-booking-assistant'),
+        ];
+
+        return $results;
+    }
+
+    private function render_popup_markup(string $label, string $title, bool $with_trigger, bool $is_global): string {
         ob_start();
         ?>
-        <div class="restatify-booking" data-restatify-booking>
-            <button type="button" class="restatify-booking__trigger" data-booking-open><?php echo esc_html($atts['label']); ?></button>
+        <div class="restatify-booking" data-restatify-booking<?php echo $is_global ? ' data-booking-global="1"' : ''; ?>>
+            <?php if ($with_trigger) : ?>
+                <button type="button" class="restatify-booking__trigger" data-booking-open><?php echo esc_html($label); ?></button>
+            <?php endif; ?>
             <div class="restatify-booking__overlay" data-booking-overlay hidden>
-                <div class="restatify-booking__dialog" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr($atts['title']); ?>">
+                <div class="restatify-booking__dialog" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr($title); ?>">
                     <button type="button" class="restatify-booking__close" data-booking-close aria-label="<?php esc_attr_e('Close', 'restatify-booking-assistant'); ?>">&times;</button>
-                    <h3 class="restatify-booking__title"><?php echo esc_html($atts['title']); ?></h3>
+                    <h3 class="restatify-booking__title"><?php echo esc_html($title); ?></h3>
 
                     <div class="restatify-booking__status" data-booking-status></div>
                     <div class="restatify-booking__slots" data-booking-slots></div>
@@ -135,6 +222,7 @@ final class Restatify_Booking_Assistant {
                             <textarea name="note" rows="3" maxlength="1000"></textarea>
                         </label>
                         <button type="submit" class="restatify-booking__submit"><?php esc_html_e('Reserve now', 'restatify-booking-assistant'); ?></button>
+                        <button type="button" class="restatify-booking__close" data-booking-cancel><?php esc_html_e('Cancel booking', 'restatify-booking-assistant'); ?></button>
                     </form>
                 </div>
             </div>
@@ -570,7 +658,28 @@ final class Restatify_Booking_Assistant {
             $saved = [];
         }
 
-        return wp_parse_args($saved, $this->get_default_options());
+        $options = wp_parse_args($saved, $this->get_default_options());
+
+        $options['autoresponder_subject'] = $this->translate_option_string((string) ($options['autoresponder_subject'] ?? ''));
+        $options['autoresponder_body'] = $this->translate_option_string((string) ($options['autoresponder_body'] ?? ''));
+
+        return $options;
+    }
+
+    private function translate_option_string(string $value): string {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (function_exists('pll__')) {
+            $translated = pll__($value);
+            if (is_string($translated) && $translated !== '') {
+                return $translated;
+            }
+        }
+
+        return $value;
     }
 
     private function get_default_options(): array {
@@ -708,111 +817,5 @@ function restatify_booking_ai_handle_message(string $message): string {
         return __('Booking service is not configured yet.', 'restatify-booking-assistant');
     }
 
-    $timezone = sanitize_text_field((string) ($options['default_timezone'] ?? 'Europe/Berlin'));
-    $duration = max(15, min(180, absint($options['default_duration_minutes'] ?? 30)));
-
-    $email = '';
-    if (preg_match('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', $message, $email_match) === 1) {
-        $email = sanitize_email((string) ($email_match[0] ?? ''));
-    }
-
-    $date = '';
-    $time = '';
-    if (preg_match('/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/', $message, $datetime_match) === 1) {
-        $date = (string) ($datetime_match[1] ?? '');
-        $time = (string) ($datetime_match[2] ?? '');
-    }
-
-    if ($email !== '' && $date !== '' && $time !== '' && preg_match('/buchen|book|reservieren|reserve/i', $message)) {
-        $name = 'Chat User';
-        if (preg_match('/name\s*:\s*([^,\n]+)/i', $message, $name_match) === 1) {
-            $name = sanitize_text_field((string) ($name_match[1] ?? 'Chat User'));
-        }
-
-        try {
-            $start = new DateTimeImmutable($date . ' ' . $time, new DateTimeZone($timezone));
-        } catch (Exception $e) {
-            return __('I could not parse the requested booking time. Please use YYYY-MM-DD HH:MM.', 'restatify-booking-assistant');
-        }
-
-        $headers = ['Content-Type' => 'application/json'];
-        if (!empty($options['api_key'])) {
-            $headers['X-API-Key'] = (string) $options['api_key'];
-        }
-
-        $create_payload = [
-            'start_iso' => $start->format(DATE_ATOM),
-            'duration_minutes' => $duration,
-            'timezone' => $timezone,
-            'name' => $name,
-            'email' => $email,
-            'note' => 'Reserved via chat overlay assistant',
-        ];
-
-        $create = wp_remote_post(rtrim((string) $options['api_base_url'], '/') . '/v1/reservations', [
-            'timeout' => 12,
-            'headers' => $headers,
-            'body' => wp_json_encode($create_payload),
-        ]);
-
-        if (is_wp_error($create)) {
-            return __('I could not complete the reservation right now. Please try again in a moment.', 'restatify-booking-assistant');
-        }
-
-        $create_status = (int) wp_remote_retrieve_response_code($create);
-        $create_body = json_decode((string) wp_remote_retrieve_body($create), true);
-        if ($create_status < 200 || $create_status >= 300 || !is_array($create_body)) {
-            return __('This slot could not be reserved. Please ask me for free slots and choose another time.', 'restatify-booking-assistant');
-        }
-
-        $reference = sanitize_text_field((string) ($create_body['reference'] ?? ''));
-        $start_iso = sanitize_text_field((string) ($create_body['start_iso'] ?? ''));
-
-        return sprintf(
-            __('Reservation confirmed for %1$s. Reference: %2$s. A confirmation email should arrive shortly at %3$s.', 'restatify-booking-assistant'),
-            $start_iso,
-            $reference !== '' ? $reference : '-',
-            $email
-        );
-    }
-
-    $start = new DateTimeImmutable('now', new DateTimeZone($timezone));
-    $end = $start->modify('+7 days');
-
-    $payload = [
-        'start_iso' => $start->format(DATE_ATOM),
-        'end_iso' => $end->format(DATE_ATOM),
-        'duration_minutes' => $duration,
-        'timezone' => $timezone,
-    ];
-
-    $headers = ['Content-Type' => 'application/json'];
-    if (!empty($options['api_key'])) {
-        $headers['X-API-Key'] = (string) $options['api_key'];
-    }
-
-    $response = wp_remote_post(rtrim((string) $options['api_base_url'], '/') . '/v1/slots/search', [
-        'timeout' => 12,
-        'headers' => $headers,
-        'body' => wp_json_encode($payload),
-    ]);
-
-    if (is_wp_error($response)) {
-        return __('I could not reach the booking service right now.', 'restatify-booking-assistant');
-    }
-
-    $body = json_decode((string) wp_remote_retrieve_body($response), true);
-    $slots = is_array($body['slots'] ?? null) ? $body['slots'] : [];
-    if (count($slots) === 0) {
-        return __('Currently I do not see free slots in the next 7 days. Please try again later.', 'restatify-booking-assistant');
-    }
-
-    $lines = [__('I found free slots:', 'restatify-booking-assistant')];
-    foreach (array_slice($slots, 0, 5) as $slot) {
-        $lines[] = '- ' . sanitize_text_field((string) ($slot['start_iso'] ?? ''));
-    }
-
-    $lines[] = __('If you want, I can help you reserve one via the booking popup.', 'restatify-booking-assistant');
-
-    return implode("\n", $lines);
+    return RESTATIFY_BOOKING_OPEN_TOKEN . ' ' . __('I am opening the booking tool now. Please choose a free slot, enter your details, and confirm. I will then submit it to the calendar API.', 'restatify-booking-assistant');
 }

@@ -7,9 +7,8 @@
     var slotsNode = root.querySelector('[data-booking-slots]');
     var form = root.querySelector('[data-booking-form]');
     var slotStartInput = root.querySelector('[data-slot-start]');
-    var slotEndInput = root.querySelector('[data-slot-end]');
 
-    if (!openBtn || !closeBtn || !overlay || !statusNode || !slotsNode || !form || !slotStartInput || !slotEndInput) {
+    if (!openBtn || !closeBtn || !overlay || !statusNode || !slotsNode || !form || !slotStartInput) {
       return;
     }
 
@@ -69,7 +68,6 @@
           button.textContent = new Date(slot.start_iso).toLocaleString();
           button.addEventListener('click', function () {
             slotStartInput.value = slot.start_iso;
-            slotEndInput.value = slot.end_iso || '';
             form.hidden = false;
             statusNode.textContent = restatifyBookingAssistant.strings.reserve + ': ' + button.textContent;
           });
@@ -88,7 +86,6 @@
       body.set('email', formData.get('email') || '');
       body.set('note', formData.get('note') || '');
       body.set('slot_start', slotStartInput.value);
-      body.set('slot_end', slotEndInput.value);
 
       fetch(restatifyBookingAssistant.ajaxUrl, {
         method: 'POST',

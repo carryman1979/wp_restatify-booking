@@ -6,8 +6,9 @@ WordPress plugin for manual appointment slot search and reservation popup.
 
 - Shortcode popup for slot lookup and reservation
 - Connects to Restatify Booking API
-- Admin settings for API endpoint/key, default duration/timezone
-- Admin settings for API sync behavior (interval, calendar list, private/official mode)
+- Core settings (required): API endpoint and API key
+- Expert settings (optional): sync interval, calendar list, weekly availability windows, autoresponder text
+- Calendar source modes include `private`/`official` and `general`/`holiday`
 - Autoresponder email with ICS attachment
 - Optional AI helper function for chat-overlay plugin integration
 
@@ -26,8 +27,12 @@ Requires a running Restatify Booking API instance.
 
 In plugin settings, define calendars one per line:
 
-`calendar_id|Label|private`
+`calendar_id|Label|private|general`
 
 or
 
-`calendar_id|Label|official`
+`calendar_id|Label|official|holiday`
+
+Weekly availability lines:
+
+`mo|09:00-12:00,13:00-17:00`

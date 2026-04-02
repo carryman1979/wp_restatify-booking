@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -122,7 +122,6 @@ final class Restatify_Booking_Assistant {
 
                     <form class="restatify-booking__form" data-booking-form hidden>
                         <input type="hidden" name="slot_start" data-slot-start>
-                        <input type="hidden" name="slot_end" data-slot-end>
                         <label>
                             <span><?php esc_html_e('Name', 'restatify-booking-assistant'); ?></span>
                             <input type="text" name="name" required maxlength="190">
@@ -279,6 +278,14 @@ final class Restatify_Booking_Assistant {
     private function request_api(string $path, array $payload = [], string $method = 'POST') {
         $options = $this->get_options();
         $base_url = rtrim((string) $options['api_base_url'], '/');
+        if ($base_url === '') {
+            return new WP_Error('restatify_booking_missing_api_url', __('Booking API Base URL is required.', 'restatify-booking-assistant'));
+        }
+
+        if (trim((string) ($options['api_key'] ?? '')) === '') {
+            return new WP_Error('restatify_booking_missing_api_key', __('Booking API key is required.', 'restatify-booking-assistant'));
+        }
+
         $url = $base_url . $path;
 
         $headers = [
@@ -593,17 +600,25 @@ final class Restatify_Booking_Assistant {
         ?>
         <div class="wrap">
             <h1><?php esc_html_e('Restatify Booking Assistant', 'restatify-booking-assistant'); ?></h1>
-            <p><?php esc_html_e('Connect the plugin to your Restatify Booking API and define autoresponder text.', 'restatify-booking-assistant'); ?></p>
+            <p><?php esc_html_e('Configure core API connection first. Advanced sync and autoresponder options are grouped below.', 'restatify-booking-assistant'); ?></p>
             <form method="post" action="options.php">
                 <?php settings_fields('restatify_booking_assistant'); ?>
+
+                <h2><?php esc_html_e('Core setup (required)', 'restatify-booking-assistant'); ?></h2>
                 <table class="form-table" role="presentation">
                     <tr>
                         <th scope="row"><?php esc_html_e('Booking API Base URL', 'restatify-booking-assistant'); ?></th>
-                        <td><input class="regular-text code" type="url" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_base_url]" value="<?php echo esc_attr((string) $options['api_base_url']); ?>"></td>
+                        <td>
+                            <input class="regular-text code" type="url" required name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_base_url]" value="<?php echo esc_attr((string) $options['api_base_url']); ?>" placeholder="https://booking-api.example.com">
+                            <p class="description"><?php esc_html_e('Public API endpoint. Example: https://booking-api.your-domain.tld', 'restatify-booking-assistant'); ?></p>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('API key', 'restatify-booking-assistant'); ?></th>
-                        <td><input class="regular-text" type="password" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_key]" value="<?php echo esc_attr((string) $options['api_key']); ?>"></td>
+                        <td>
+                            <input class="regular-text" type="password" required name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_key]" value="<?php echo esc_attr((string) $options['api_key']); ?>">
+                            <p class="description"><?php esc_html_e('Required for all API calls. Keep this secret.', 'restatify-booking-assistant'); ?></p>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Default timezone', 'restatify-booking-assistant'); ?></th>
@@ -617,6 +632,13 @@ final class Restatify_Booking_Assistant {
                         <th scope="row"><?php esc_html_e('Search window (days)', 'restatify-booking-assistant'); ?></th>
                         <td><input class="small-text" type="number" min="1" max="60" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[slot_window_days]" value="<?php echo esc_attr((string) $options['slot_window_days']); ?>"></td>
                     </tr>
+                </table>
+
+                <details style="margin-top:12px;">
+                    <summary><strong><?php esc_html_e('Expert settings (optional)', 'restatify-booking-assistant'); ?></strong></summary>
+                    <p class="description"><?php esc_html_e('Advanced sync controls, calendar mapping and autoresponder customization.', 'restatify-booking-assistant'); ?></p>
+
+                    <table class="form-table" role="presentation">
                     <tr>
                         <th scope="row"><?php esc_html_e('Enable API sync', 'restatify-booking-assistant'); ?></th>
                         <td>
@@ -659,6 +681,7 @@ final class Restatify_Booking_Assistant {
                         </td>
                     </tr>
                 </table>
+                </details>
                 <?php submit_button(); ?>
             </form>
             <p><strong><?php esc_html_e('Shortcode:', 'restatify-booking-assistant'); ?></strong> [restatify_booking_popup]</p>

@@ -10,9 +10,10 @@
     var cancelBtn = root.querySelector('[data-booking-cancel]');
     var overlay = root.querySelector('[data-booking-overlay]');
     var statusNode = root.querySelector('[data-booking-status]');
-    var slotsNode = root.querySelector('[data-booking-slots]');
     var form = root.querySelector('[data-booking-form]');
     var slotStartInput = root.querySelector('[data-slot-start]');
+    var dateStepNode = root.querySelector('[data-booking-calendar]');
+    var timeStepNode = root.querySelector('[data-booking-times]');
     var wizardTrack = root.querySelector('[data-booking-steps]');
     var wizardSteps = root.querySelectorAll('[data-booking-step]');
     var wizardPrev = root.querySelector('[data-step-prev]');
@@ -34,11 +35,10 @@
       slots: [],
       selectedDayKey: '',
       currentMonth: null,
-      shouldScrollToTimes: false,
       currentFormStep: 0
     };
 
-    if (!closeBtn || !overlay || !statusNode || !slotsNode || !form || !slotStartInput) {
+    if (!closeBtn || !overlay || !statusNode || !form || !slotStartInput || !dateStepNode || !timeStepNode) {
       return;
     }
 
@@ -46,12 +46,46 @@
       return wizardSteps ? wizardSteps.length : 0;
     }
 
-    function validateCurrentStep() {
-      if (!wizardSteps || !wizardSteps.length) {
-        return true;
+    function renderNoSlotsStatus() {
+      var noSlotsConfig = restatifyBookingAssistant.noSlots || {};
+      var strings = restatifyBookingAssistant.strings || {};
+      var chatAvailable = !!noSlotsConfig.chatAvailable;
+      var contactEmail = String(noSlotsConfig.contactEmail || '').trim();
+
+      statusNode.textContent = '';
+
+      var headline = document.createElement('p');
+      headline.textContent = strings.emptyRange || strings.empty || 'Im ausgewaehlten Zeitraum wurden keine freien Termine gefunden.';
+      statusNode.appendChild(headline);
+
+      if (chatAvailable) {
+        var chatHint = document.createElement('p');
+        chatHint.textContent = strings.emptyChatHint || 'Nutze bitte das Chat-Overlay, um uns schnell zu erreichen.';
+        statusNode.appendChild(chatHint);
       }
 
-      var current = wizardSteps[bookingState.currentFormStep];
+      if (contactEmail) {
+        var emailHint = document.createElement('p');
+        var emailHintText = document.createTextNode((strings.emptyEmailHint || 'Bitte schreibe uns eine E-Mail an') + ' ');
+        var emailLink = document.createElement('a');
+        emailLink.href = 'mailto:' + contactEmail;
+        emailLink.textContent = contactEmail;
+        emailHint.appendChild(emailHintText);
+        emailHint.appendChild(emailLink);
+        statusNode.appendChild(emailHint);
+      }
+    }
+
+    function isStepValid(stepIndex) {
+      if (stepIndex === 0) {
+        return bookingState.selectedDayKey !== '';
+      }
+
+      if (stepIndex === 1) {
+        return String(slotStartInput.value || '').trim() !== '';
+      }
+
+      var current = wizardSteps[stepIndex];
       if (!current) {
         return true;
       }
@@ -85,7 +119,6 @@
       }
 
       wizardTrack.style.transform = 'translateX(-' + String(bookingState.currentFormStep * 100) + '%)';
-
       for (var i = 0; i < wizardSteps.length; i += 1) {
         wizardSteps[i].setAttribute('aria-hidden', i === bookingState.currentFormStep ? 'false' : 'true');
       }
@@ -96,15 +129,12 @@
       if (wizardPrev) {
         wizardPrev.hidden = isFirst;
       }
-
       if (wizardNext) {
         wizardNext.hidden = isLast;
       }
-
       if (wizardIndicator) {
         wizardIndicator.textContent = String(bookingState.currentFormStep + 1) + '/' + String(total);
       }
-
       if (submitBtn) {
         submitBtn.hidden = !isLast;
       }
@@ -115,41 +145,11 @@
       updateFormWizard();
     }
 
-    if (wizardPrev) {
-      wizardPrev.addEventListener('click', function () {
-        bookingState.currentFormStep -= 1;
-        updateFormWizard();
-      });
-    }
-
-    if (wizardNext) {
-      wizardNext.addEventListener('click', function () {
-        if (!validateCurrentStep()) {
-          return;
-        }
-
-        bookingState.currentFormStep += 1;
-        updateFormWizard();
-      });
-    }
-
-    updateFormWizard();
-
     function getContactButtons() {
       if (!contactChannelsNode) {
         return [];
       }
-
       return Array.prototype.slice.call(contactChannelsNode.querySelectorAll('[data-contact-channel]'));
-    }
-
-    function getSelectedContactButton() {
-      var buttons = getContactButtons();
-      var selected = buttons.find(function (button) {
-        return button.classList.contains('is-selected');
-      });
-
-      return selected || buttons[0] || null;
     }
 
     function setSelectedContactMethod(methodKey) {
@@ -158,8 +158,7 @@
         return;
       }
 
-      var fallback = buttons[0];
-      var selected = fallback;
+      var selected = buttons[0];
       buttons.forEach(function (button) {
         if (String(button.getAttribute('data-method-key') || '') === String(methodKey || '')) {
           selected = button;
@@ -182,7 +181,10 @@
         return;
       }
 
-      var selected = getSelectedContactButton();
+      var selected = getContactButtons().find(function (button) {
+        return button.classList.contains('is-selected');
+      }) || getContactButtons()[0];
+
       if (!selected) {
         return;
       }
@@ -209,13 +211,13 @@
       contactValueInput.placeholder = placeholder;
     }
 
-    function initContactChannelToggle() {
+    function initContactToggle() {
       if (!contactChannelsNode || !contactChannelsToggle) {
         return;
       }
 
-      var moreLabel = String(contactChannelsToggle.getAttribute('data-label-more') || 'More...');
-      var lessLabel = String(contactChannelsToggle.getAttribute('data-label-less') || 'Less');
+      var moreLabel = String(contactChannelsToggle.getAttribute('data-label-more') || 'Mehr...');
+      var lessLabel = String(contactChannelsToggle.getAttribute('data-label-less') || 'Weniger');
 
       function update(expanded) {
         contactChannelsNode.classList.toggle('is-expanded', expanded);
@@ -230,171 +232,14 @@
       });
     }
 
-    var contactButtons = getContactButtons();
-    if (contactButtons.length > 0) {
-      contactButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-          setSelectedContactMethod(button.getAttribute('data-method-key') || '');
-          syncContactField();
-        });
-      });
-
-      setSelectedContactMethod(defaultContactMethod);
-      initContactChannelToggle();
-      syncContactField();
-    }
-
-    function openPopup() {
-      if (autoCloseTimer) {
-        clearTimeout(autoCloseTimer);
-        autoCloseTimer = null;
-      }
-
-      overlay.hidden = false;
-      form.hidden = true;
-      statusNode.textContent = restatifyBookingAssistant.strings.loading;
-      slotsNode.innerHTML = '';
-      bookingState.active = true;
-      bookingState.selectedSlot = '';
-      bookingState.confirmed = false;
-      loadSlots();
-    }
-
-    function closePopup(cancelledByVisitor) {
-      if (autoCloseTimer) {
-        clearTimeout(autoCloseTimer);
-        autoCloseTimer = null;
-      }
-
-      overlay.hidden = true;
-
-      if (cancelledByVisitor && bookingState.active && !bookingState.confirmed) {
-        sendChatEvent('cancelled', {
-          startIso: bookingState.selectedSlot
-        });
-      }
-
-      bookingState.active = false;
-      bookingState.selectedSlot = '';
-      slotStartInput.value = '';
-      form.hidden = true;
-      resetFormWizard();
-      setSubmitBusy(false);
-    }
-
-    function setSubmitBusy(isBusy) {
-      if (!submitBtn) {
-        return;
-      }
-
-      submitBtn.disabled = isBusy;
-      submitBtn.setAttribute('aria-busy', isBusy ? 'true' : 'false');
-      submitBtn.style.opacity = isBusy ? '0.7' : '';
-      submitBtn.style.cursor = isBusy ? 'wait' : '';
-    }
-
-    root.restatifyOpenPopup = openPopup;
-    popupRoots.push(root);
-
-    if (openBtn) {
-      openBtn.addEventListener('click', openPopup);
-    }
-
-    closeBtn.addEventListener('click', function () {
-      closePopup(true);
-    });
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', function () {
-        closePopup(true);
+    function getSlotsForDay(dayKey) {
+      return bookingState.slots.filter(function (slot) {
+        return getDayKey(new Date(slot.start_iso)) === dayKey;
       });
     }
 
-    overlay.addEventListener('click', function (event) {
-      if (event.target === overlay) {
-        closePopup(true);
-      }
-    });
-
-    document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && !overlay.hidden) {
-        closePopup(true);
-      }
-    });
-
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      reserveSlot(new FormData(form));
-    });
-
-    function loadSlots() {
-      var body = new URLSearchParams();
-      body.set('action', 'restatify_booking_find_slots');
-      body.set('nonce', restatifyBookingAssistant.nonce);
-      body.set('timezone', restatifyBookingAssistant.timezone);
-      body.set('duration_minutes', String(restatifyBookingAssistant.durationMinutes));
-      body.set('window_days', String(restatifyBookingAssistant.windowDays));
-
-      fetch(restatifyBookingAssistant.ajaxUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-        },
-        body: body.toString()
-      }).then(function (response) {
-        return response.json();
-      }).then(function (data) {
-        if (!data || data.success !== true) {
-          var message = data && data.data && data.data.message ? String(data.data.message) : restatifyBookingAssistant.strings.error;
-          statusNode.textContent = message;
-          return;
-        }
-
-        var slots = data && data.success && data.data && Array.isArray(data.data.slots) ? data.data.slots : [];
-        if (!slots.length) {
-          statusNode.textContent = restatifyBookingAssistant.strings.empty;
-          return;
-        }
-
-        bookingState.slots = slots.slice();
-        bookingState.selectedDayKey = getDayKey(new Date(slots[0].start_iso));
-        bookingState.currentMonth = startOfMonth(new Date(slots[0].start_iso));
-        statusNode.textContent = restatifyBookingAssistant.strings.selectDay || '';
-
-        renderCalendarAndSlots();
-      }).catch(function () {
-        statusNode.textContent = restatifyBookingAssistant.strings.error;
-      });
-    }
-
-    function renderCalendarAndSlots() {
-      slotsNode.innerHTML = '';
-
-      var wrapper = document.createElement('div');
-      wrapper.className = 'restatify-booking__calendar-wrap';
-
-      var calendar = document.createElement('div');
-      calendar.className = 'restatify-booking__calendar';
-      renderCalendar(calendar);
-
-      var times = document.createElement('div');
-      times.className = 'restatify-booking__times';
-      renderDayTimes(times);
-
-      wrapper.appendChild(calendar);
-      wrapper.appendChild(times);
-      slotsNode.appendChild(wrapper);
-
-      if (bookingState.shouldScrollToTimes) {
-        bookingState.shouldScrollToTimes = false;
-        window.requestAnimationFrame(function () {
-          times.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      }
-    }
-
-    function renderCalendar(container) {
-      container.innerHTML = '';
+    function renderDateStep() {
+      dateStepNode.innerHTML = '';
 
       var month = bookingState.currentMonth || startOfMonth(new Date());
       bookingState.currentMonth = startOfMonth(month);
@@ -408,7 +253,7 @@
       prev.textContent = '<';
       prev.addEventListener('click', function () {
         bookingState.currentMonth = startOfMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1));
-        renderCalendarAndSlots();
+        renderDateStep();
       });
 
       var title = document.createElement('strong');
@@ -421,13 +266,13 @@
       next.textContent = '>';
       next.addEventListener('click', function () {
         bookingState.currentMonth = startOfMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1));
-        renderCalendarAndSlots();
+        renderDateStep();
       });
 
       header.appendChild(prev);
       header.appendChild(title);
       header.appendChild(next);
-      container.appendChild(header);
+      dateStepNode.appendChild(header);
 
       var weekdayRow = document.createElement('div');
       weekdayRow.className = 'restatify-booking__calendar-weekdays';
@@ -436,7 +281,7 @@
         node.textContent = wd;
         weekdayRow.appendChild(node);
       });
-      container.appendChild(weekdayRow);
+      dateStepNode.appendChild(weekdayRow);
 
       var grid = document.createElement('div');
       grid.className = 'restatify-booking__calendar-grid';
@@ -471,16 +316,13 @@
 
         cell.textContent = String(day);
         if (available) {
-          cell.addEventListener('click', function (clickedKey) {
+          cell.addEventListener('click', function (clickedDay) {
             return function () {
-              bookingState.selectedDayKey = clickedKey;
+              bookingState.selectedDayKey = clickedDay;
               bookingState.selectedSlot = '';
-              bookingState.shouldScrollToTimes = true;
               slotStartInput.value = '';
-              form.hidden = true;
-              resetFormWizard();
-              statusNode.textContent = restatifyBookingAssistant.strings.pickTime || restatifyBookingAssistant.strings.reserve;
-              renderCalendarAndSlots();
+              renderDateStep();
+              renderTimeStep();
             };
           }(dayKey));
         }
@@ -488,26 +330,23 @@
         grid.appendChild(cell);
       }
 
-      container.appendChild(grid);
+      dateStepNode.appendChild(grid);
     }
 
-    function renderDayTimes(container) {
-      container.innerHTML = '';
+    function renderTimeStep() {
+      timeStepNode.innerHTML = '';
+      var daySlots = getSlotsForDay(bookingState.selectedDayKey);
 
-      var heading = document.createElement('p');
-      heading.className = 'restatify-booking__times-heading';
-      heading.textContent = restatifyBookingAssistant.strings.pickTime || 'Select a time';
-      container.appendChild(heading);
-
-      var selectedDay = bookingState.selectedDayKey;
-      var daySlots = getSlotsForDay(selectedDay);
       if (!daySlots.length) {
         var empty = document.createElement('p');
         empty.className = 'restatify-booking__times-empty';
-        empty.textContent = restatifyBookingAssistant.strings.empty;
-        container.appendChild(empty);
+        empty.textContent = restatifyBookingAssistant.strings.pickTime || 'Bitte zuerst ein Datum auswählen.';
+        timeStepNode.appendChild(empty);
         return;
       }
+
+      var grid = document.createElement('div');
+      grid.className = 'restatify-booking__times-grid';
 
       daySlots.forEach(function (slot) {
         var startDate = new Date(slot.start_iso);
@@ -516,60 +355,115 @@
         var button = document.createElement('button');
         button.type = 'button';
         button.className = 'restatify-booking__slot';
+        if (bookingState.selectedSlot === slot.start_iso) {
+          button.classList.add('is-selected');
+        }
         button.textContent = label;
         button.addEventListener('click', function () {
-          slotStartInput.value = slot.start_iso;
           bookingState.selectedSlot = slot.start_iso;
-          form.hidden = false;
-          resetFormWizard();
-          statusNode.textContent = restatifyBookingAssistant.strings.reserve + ': ' + startDate.toLocaleString();
+          slotStartInput.value = slot.start_iso;
+          renderTimeStep();
         });
 
-        container.appendChild(button);
+        grid.appendChild(button);
+      });
+
+      timeStepNode.appendChild(grid);
+    }
+
+    function loadSlots() {
+      var body = new URLSearchParams();
+      body.set('action', 'restatify_booking_find_slots');
+      body.set('nonce', restatifyBookingAssistant.nonce);
+      body.set('timezone', restatifyBookingAssistant.timezone);
+      body.set('duration_minutes', String(restatifyBookingAssistant.durationMinutes));
+      body.set('window_days', String(restatifyBookingAssistant.windowDays));
+
+      fetch(restatifyBookingAssistant.ajaxUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
+        body: body.toString()
+      }).then(function (response) {
+        return response.json();
+      }).then(function (data) {
+        if (!data || data.success !== true) {
+          var message = data && data.data && data.data.message ? String(data.data.message) : restatifyBookingAssistant.strings.error;
+          statusNode.textContent = message;
+          form.hidden = true;
+          return;
+        }
+
+        var slots = data && data.success && data.data && Array.isArray(data.data.slots) ? data.data.slots : [];
+        if (!slots.length) {
+          renderNoSlotsStatus();
+          form.hidden = true;
+          return;
+        }
+
+        bookingState.slots = slots.slice();
+        bookingState.selectedDayKey = '';
+        bookingState.currentMonth = startOfMonth(new Date(slots[0].start_iso));
+        bookingState.selectedSlot = '';
+        slotStartInput.value = '';
+
+        renderDateStep();
+        renderTimeStep();
+        resetFormWizard();
+        form.hidden = false;
+        statusNode.textContent = '';
+      }).catch(function () {
+        statusNode.textContent = restatifyBookingAssistant.strings.error;
+        form.hidden = true;
       });
     }
 
-    function getSlotsForDay(dayKey) {
-      return bookingState.slots.filter(function (slot) {
-        return getDayKey(new Date(slot.start_iso)) === dayKey;
-      });
-    }
-
-    function getWeekdayIndex(date) {
-      var sundayFirst = date.getDay();
-      if (!weekStartsMonday) {
-        return sundayFirst;
+    function openPopup() {
+      if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
       }
 
-      return (sundayFirst + 6) % 7;
+      overlay.hidden = false;
+      form.hidden = true;
+      statusNode.textContent = restatifyBookingAssistant.strings.loading;
+      bookingState.active = true;
+      bookingState.confirmed = false;
+      loadSlots();
     }
 
-    function getWeekdayLabels() {
-      var baseMonday = new Date(Date.UTC(2024, 0, 1)); // Monday
-      var labels = [];
-
-      for (var i = 0; i < 7; i += 1) {
-        var day = new Date(baseMonday);
-        day.setUTCDate(baseMonday.getUTCDate() + i);
-        labels.push(day.toLocaleDateString(locale, { weekday: 'short' }));
+    function closePopup(cancelledByVisitor) {
+      if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
       }
 
-      if (weekStartsMonday) {
-        return labels;
+      overlay.hidden = true;
+
+      if (cancelledByVisitor && bookingState.active && !bookingState.confirmed) {
+        sendChatEvent('cancelled', {
+          startIso: bookingState.selectedSlot
+        });
       }
 
-      return [labels[6]].concat(labels.slice(0, 6));
+      bookingState.active = false;
+      bookingState.selectedSlot = '';
+      bookingState.selectedDayKey = '';
+      slotStartInput.value = '';
+      form.hidden = true;
+      resetFormWizard();
+      setSubmitBusy(false);
     }
 
-    function getDayKey(date) {
-      var y = date.getFullYear();
-      var m = String(date.getMonth() + 1).padStart(2, '0');
-      var d = String(date.getDate()).padStart(2, '0');
-      return y + '-' + m + '-' + d;
-    }
-
-    function startOfMonth(date) {
-      return new Date(date.getFullYear(), date.getMonth(), 1);
+    function setSubmitBusy(isBusy) {
+      if (!submitBtn) {
+        return;
+      }
+      submitBtn.disabled = isBusy;
+      submitBtn.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+      submitBtn.style.opacity = isBusy ? '0.7' : '';
+      submitBtn.style.cursor = isBusy ? 'wait' : '';
     }
 
     function reserveSlot(formData) {
@@ -581,6 +475,7 @@
       body.set('nonce', restatifyBookingAssistant.nonce);
       body.set('name', formData.get('name') || '');
       body.set('email', formData.get('email') || '');
+      body.set('subject', formData.get('subject') || '');
       body.set('note', formData.get('note') || '');
       body.set('contact_method', formData.get('contact_method') || 'phone');
       body.set('contact_value', formData.get('contact_value') || '');
@@ -626,6 +521,42 @@
       });
     }
 
+    function getWeekdayIndex(date) {
+      var sundayFirst = date.getDay();
+      if (!weekStartsMonday) {
+        return sundayFirst;
+      }
+      return (sundayFirst + 6) % 7;
+    }
+
+    function getWeekdayLabels() {
+      var baseMonday = new Date(Date.UTC(2024, 0, 1));
+      var labels = [];
+
+      for (var i = 0; i < 7; i += 1) {
+        var day = new Date(baseMonday);
+        day.setUTCDate(baseMonday.getUTCDate() + i);
+        labels.push(day.toLocaleDateString(locale, { weekday: 'short' }));
+      }
+
+      if (weekStartsMonday) {
+        return labels;
+      }
+
+      return [labels[6]].concat(labels.slice(0, 6));
+    }
+
+    function getDayKey(date) {
+      var y = date.getFullYear();
+      var m = String(date.getMonth() + 1).padStart(2, '0');
+      var d = String(date.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
+    function startOfMonth(date) {
+      return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
     function sendChatEvent(eventType, details) {
       var chatNonce = restatifyBookingAssistant.chatNonce || '';
       if (!chatNonce) {
@@ -665,6 +596,73 @@
         return;
       });
     }
+
+    if (wizardPrev) {
+      wizardPrev.addEventListener('click', function () {
+        bookingState.currentFormStep -= 1;
+        updateFormWizard();
+      });
+    }
+
+    if (wizardNext) {
+      wizardNext.addEventListener('click', function () {
+        if (!isStepValid(bookingState.currentFormStep)) {
+          return;
+        }
+        bookingState.currentFormStep += 1;
+        updateFormWizard();
+      });
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      if (!isStepValid(bookingState.currentFormStep)) {
+        return;
+      }
+      reserveSlot(new FormData(form));
+    });
+
+    var contactButtons = getContactButtons();
+    if (contactButtons.length > 0) {
+      contactButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          setSelectedContactMethod(button.getAttribute('data-method-key') || '');
+          syncContactField();
+        });
+      });
+      setSelectedContactMethod(defaultContactMethod);
+      initContactToggle();
+      syncContactField();
+    }
+
+    root.restatifyOpenPopup = openPopup;
+    popupRoots.push(root);
+
+    if (openBtn) {
+      openBtn.addEventListener('click', openPopup);
+    }
+    closeBtn.addEventListener('click', function () {
+      closePopup(true);
+    });
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function () {
+        closePopup(true);
+      });
+    }
+
+    overlay.addEventListener('click', function (event) {
+      if (event.target === overlay) {
+        closePopup(true);
+      }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !overlay.hidden) {
+        closePopup(true);
+      }
+    });
+
+    updateFormWizard();
   }
 
   function openFromLink() {

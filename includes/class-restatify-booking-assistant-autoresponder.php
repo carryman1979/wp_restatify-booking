@@ -23,6 +23,7 @@ final class Restatify_Booking_Assistant_Autoresponder {
         array $reservation,
         string $name,
         string $email,
+        string $subject_line,
         string $note,
         string $contact_method,
         string $contact_value,
@@ -36,10 +37,11 @@ final class Restatify_Booking_Assistant_Autoresponder {
         $start_iso = (string) ($reservation['start_iso'] ?? '');
         $end_iso = (string) ($reservation['end_iso'] ?? '');
 
-        $search = ['{name}', '{email}', '{start}', '{end}', '{timezone}', '{note}', '{reference}', '{contact_method}', '{contact_value}', '{contact_detail}'];
+        $search = ['{name}', '{email}', '{subject}', '{start}', '{end}', '{timezone}', '{note}', '{reference}', '{contact_method}', '{contact_value}', '{contact_detail}'];
         $replace = [
             $name,
             $email,
+            $subject_line,
             $start_iso,
             $end_iso,
             $timezone,
@@ -52,7 +54,7 @@ final class Restatify_Booking_Assistant_Autoresponder {
 
         $body = str_replace($search, $replace, $template);
 
-        $attachment = $this->build_ics_attachment($reservation, $name, $email, $timezone, $note, $contact_method, $contact_detail);
+        $attachment = $this->build_ics_attachment($reservation, $name, $email, $subject_line, $timezone, $note, $contact_method, $contact_detail);
         $attachments = [];
         if ($attachment !== '') {
             $attachments[] = $attachment;
@@ -72,6 +74,7 @@ final class Restatify_Booking_Assistant_Autoresponder {
         array $reservation,
         string $name,
         string $email,
+        string $subject_line,
         string $timezone,
         string $note,
         string $contact_method,
@@ -91,7 +94,7 @@ final class Restatify_Booking_Assistant_Autoresponder {
         }
 
         $uid = (string) ($reservation['reference'] ?? wp_generate_uuid4());
-        $summary = 'Restatify Gespraech';
+        $summary = trim($subject_line) !== '' ? ('Restatify: ' . $subject_line) : 'Restatify Gespraech';
         $description = "Name: {$name}\\nEmail: {$email}\\nKontaktkanal: {$contact_method}\\nKontakt: {$contact_detail}\\nNotiz: {$note}";
 
         $ics = "BEGIN:VCALENDAR\r\n";

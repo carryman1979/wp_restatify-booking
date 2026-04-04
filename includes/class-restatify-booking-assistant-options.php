@@ -94,6 +94,7 @@ final class Restatify_Booking_Assistant_Options {
             'default_timezone' => sanitize_text_field((string) ($input['default_timezone'] ?? $defaults['default_timezone'])),
             'default_duration_minutes' => max(15, min(180, absint($input['default_duration_minutes'] ?? $defaults['default_duration_minutes']))),
             'slot_window_days' => max(1, min(60, absint($input['slot_window_days'] ?? $defaults['slot_window_days']))),
+            'no_slots_contact_email' => sanitize_email((string) ($input['no_slots_contact_email'] ?? $defaults['no_slots_contact_email'])),
             'api_sync_enabled' => !empty($input['api_sync_enabled']),
             'api_sync_interval_minutes' => max(5, min(720, absint($input['api_sync_interval_minutes'] ?? $defaults['api_sync_interval_minutes']))),
             'api_google_write_events_enabled' => !empty($input['api_google_write_events_enabled']),
@@ -145,6 +146,7 @@ final class Restatify_Booking_Assistant_Options {
             'default_timezone' => wp_timezone_string() ?: 'Europe/Berlin',
             'default_duration_minutes' => 30,
             'slot_window_days' => 14,
+            'no_slots_contact_email' => sanitize_email((string) get_option('admin_email', '')),
             'api_sync_enabled' => true,
             'api_sync_interval_minutes' => 15,
             'api_google_write_events_enabled' => true,
@@ -156,10 +158,10 @@ final class Restatify_Booking_Assistant_Options {
             'contact_channels_raw' => $this->get_default_contact_channels_raw(),
             'contact_channels' => [],
             'contact_prominent_count' => 3,
-            'contact_more_label' => __('More...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'contact_less_label' => __('Less', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'autoresponder_subject' => __('Your Restatify appointment reservation', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'autoresponder_body' => "Hallo {name},\n\nvielen Dank fuer deine Reservierung.\n\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nReferenz: {reference}\n\nViele Gruesse\nRestatify",
+            'contact_more_label' => __('Mehr...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'contact_less_label' => __('Weniger', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'autoresponder_subject' => __('Deine Restatify Terminreservierung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'autoresponder_body' => "Hallo {name},\n\nvielen Dank fuer deine Reservierung.\n\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nReferenz: {reference}\n\nViele Gruesse\nRestatify",
         ];
     }
 
@@ -328,7 +330,7 @@ final class Restatify_Booking_Assistant_Options {
             }
 
             $placeholder = sanitize_text_field((string) ($parts[3] ?? ''));
-            $value_label = sanitize_text_field((string) ($parts[4] ?? __('Contact details', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)));
+            $value_label = sanitize_text_field((string) ($parts[4] ?? __('Kontaktdaten', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)));
             $ics_template = sanitize_text_field((string) ($parts[5] ?? '{value}'));
 
             if ($ics_template === '') {

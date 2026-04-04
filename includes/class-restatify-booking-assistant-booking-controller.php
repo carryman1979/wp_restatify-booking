@@ -70,13 +70,14 @@ final class Restatify_Booking_Assistant_Booking_Controller {
 
         $name = sanitize_text_field((string) ($_POST['name'] ?? ''));
         $email = sanitize_email((string) ($_POST['email'] ?? ''));
+        $subject = sanitize_text_field((string) ($_POST['subject'] ?? ''));
         $note = sanitize_textarea_field((string) ($_POST['note'] ?? ''));
         $slot_start = sanitize_text_field((string) ($_POST['slot_start'] ?? ''));
         $default_method = (string) ($contact_channels[0]['key'] ?? 'phone');
         $contact_method = sanitize_key((string) ($_POST['contact_method'] ?? $default_method));
         $contact_value_raw = sanitize_text_field((string) ($_POST['contact_value'] ?? ''));
 
-        if ($name === '' || $email === '' || $slot_start === '') {
+        if ($name === '' || $email === '' || $slot_start === '' || $subject === '') {
             wp_send_json_error(['message' => __('Please complete all required fields.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)], 400);
         }
 
@@ -127,6 +128,7 @@ final class Restatify_Booking_Assistant_Booking_Controller {
         if ($note_with_contact !== '') {
             $note_with_contact .= "\n\n";
         }
+        $note_with_contact = 'Subject: ' . $subject . "\n" . $note_with_contact;
         $note_with_contact .= sprintf('Contact channel: %s', $contact_label) . "\n";
         $note_with_contact .= sprintf('Contact details: %s', $contact_detail);
 
@@ -144,7 +146,7 @@ final class Restatify_Booking_Assistant_Booking_Controller {
             wp_send_json_error(['message' => $response->get_error_message()], 500);
         }
 
-        $this->autoresponder->send_confirmation($response, $name, $email, $note_with_contact, $contact_label, $contact_value, $contact_detail);
+        $this->autoresponder->send_confirmation($response, $name, $email, $subject, $note_with_contact, $contact_label, $contact_value, $contact_detail);
 
         wp_send_json_success([
             'reference' => sanitize_text_field((string) ($response['reference'] ?? '')),

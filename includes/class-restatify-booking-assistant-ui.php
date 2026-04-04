@@ -27,6 +27,11 @@ final class Restatify_Booking_Assistant_UI {
         $base_url = plugin_dir_url($this->plugin_file) . 'assets/';
         $base_path = plugin_dir_path($this->plugin_file) . 'assets/';
         $options = $this->options_service->get_options();
+        $no_slots_contact_email = sanitize_email((string) ($options['no_slots_contact_email'] ?? ''));
+        if ($no_slots_contact_email === '') {
+            $no_slots_contact_email = sanitize_email((string) get_option('admin_email', ''));
+        }
+        $multi_chat_available = $this->is_multi_chat_overlay_chat_enabled();
 
         wp_enqueue_style(
             'restatify-booking-assistant',
@@ -51,14 +56,21 @@ final class Restatify_Booking_Assistant_UI {
             'durationMinutes' => (int) $options['default_duration_minutes'],
             'windowDays' => (int) $options['slot_window_days'],
             'triggerHash' => Restatify_Booking_Assistant_Constants::BOOKING_TRIGGER_HASH,
+            'noSlots' => [
+                'chatAvailable' => $multi_chat_available,
+                'contactEmail' => $no_slots_contact_email,
+            ],
             'strings' => [
-                'loading' => __('Searching free slots...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'empty' => __('No free slots found in this period.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'reserve' => __('Reserve slot', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'loading' => __('Freie Termine werden gesucht...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'empty' => __('Im ausgewaehlten Zeitraum wurden keine freien Termine gefunden.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'emptyRange' => __('Im konfigurierten Zeitraum sind aktuell keine freien Termine verfuegbar.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'emptyChatHint' => __('Wenn es eilt, versuche bitte Kontakt ueber den Chat im Multi-Chat-Overlay aufzunehmen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'emptyEmailHint' => __('Alternativ schreibe uns bitte eine E-Mail an', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'reserve' => __('Termin reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
                 'selectDay' => __('Tag im Kalender auswaehlen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
                 'pickTime' => __('Uhrzeit auswaehlen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'success' => __('Reservation received. Check your email for details.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'error' => __('Reservation failed. Please try another slot.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'success' => __('Reservierung eingegangen. Bitte pruefe deine E-Mails fuer die Details.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'error' => __('Reservierung fehlgeschlagen. Bitte versuche einen anderen Termin.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             ],
         ]);
     }
@@ -70,8 +82,8 @@ final class Restatify_Booking_Assistant_UI {
      */
     public function render_shortcode(array $atts): string {
         $atts = shortcode_atts([
-            'label' => __('Find appointment', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'title' => __('Book a conversation', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'label' => __('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'title' => __('Gespraech buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
         ], $atts, 'restatify_booking_popup');
 
         return $this->render_popup_markup((string) $atts['label'], (string) $atts['title'], true, false);
@@ -86,8 +98,8 @@ final class Restatify_Booking_Assistant_UI {
         }
 
         echo $this->render_popup_markup(
-            __('Find appointment', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            __('Book a conversation', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            __('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            __('Gespraech buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             false,
             true
         );
@@ -118,9 +130,9 @@ final class Restatify_Booking_Assistant_UI {
 
         $results[] = [
             'ID' => 0,
-            'title' => __('Booking Popup (Restatify)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'title' => __('Buchungs-Popup (Restatify)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             'permalink' => home_url('/') . Restatify_Booking_Assistant_Constants::BOOKING_TRIGGER_HASH,
-            'info' => __('Opens the Restatify booking overlay on click.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'info' => __('Oeffnet beim Klick das Restatify Buchungs-Overlay.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
         ];
 
         return $results;
@@ -138,125 +150,132 @@ final class Restatify_Booking_Assistant_UI {
         ?>
         <div class="wrap">
             <h1><?php esc_html_e('Restatify Booking Assistant', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></h1>
-            <p><?php esc_html_e('Configure core API connection first. Advanced sync and autoresponder options are grouped below.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+            <p><?php esc_html_e('Konfiguriere zuerst die grundlegende API-Verbindung. Erweiterte Sync- und Autoresponder-Optionen sind weiter unten gruppiert.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
             <form method="post" action="options.php">
                 <?php settings_fields('restatify_booking_assistant'); ?>
 
-                <h2><?php esc_html_e('Core setup (required)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></h2>
+                <h2><?php esc_html_e('Grundkonfiguration (erforderlich)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></h2>
                 <table class="form-table" role="presentation">
                     <tr>
-                        <th scope="row"><?php esc_html_e('Booking API Base URL', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <th scope="row"><?php esc_html_e('Booking-API Basis-URL', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <input class="regular-text code" type="url" required name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_base_url]" value="<?php echo esc_attr((string) $options['api_base_url']); ?>" placeholder="https://booking-api.example.com">
-                            <p class="description"><?php esc_html_e('Public API endpoint. Example: https://booking-api.your-domain.tld', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Oeffentlicher API-Endpunkt. Beispiel: https://booking-api.deine-domain.tld', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('API key', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <input class="regular-text" type="password" required name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_key]" value="<?php echo esc_attr((string) $options['api_key']); ?>">
-                            <p class="description"><?php esc_html_e('Required for all API calls. Keep this secret.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Erforderlich fuer alle API-Aufrufe. Bitte vertraulich behandeln.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><?php esc_html_e('Default timezone', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <th scope="row"><?php esc_html_e('Standard-Zeitzone', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <input class="regular-text" type="text" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[default_timezone]" value="<?php echo esc_attr((string) $options['default_timezone']); ?>">
-                            <p class="description"><?php esc_html_e('Timezone used for slot search, booking timestamps and autoresponder placeholders. Example: Europe/Berlin.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Zeitzone fuer Termin-Suche, Buchungszeitstempel und Platzhalter im Autoresponder. Beispiel: Europe/Berlin.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><?php esc_html_e('Default duration (minutes)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <th scope="row"><?php esc_html_e('Standarddauer (Minuten)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <input class="small-text" type="number" min="15" max="180" step="15" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[default_duration_minutes]" value="<?php echo esc_attr((string) $options['default_duration_minutes']); ?>">
-                            <p class="description"><?php esc_html_e('Defines booking length. Only slots long enough for this duration are offered and reservations are created with this value.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Definiert die Buchungsdauer. Es werden nur Termine angeboten, die lang genug sind, und Reservierungen werden mit diesem Wert angelegt.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><?php esc_html_e('Search window (days)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <th scope="row"><?php esc_html_e('Suchzeitraum (Tage)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <input class="small-text" type="number" min="1" max="60" step="1" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[slot_window_days]" value="<?php echo esc_attr((string) $options['slot_window_days']); ?>">
-                            <p class="description"><?php esc_html_e('How many days ahead the popup searches for free slots. Higher values show more options but can increase response time.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Wie viele Tage im Voraus das Popup nach freien Terminen sucht. Hoehere Werte zeigen mehr Optionen, koennen aber die Antwortzeit erhoehen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><?php esc_html_e('Calendars to sync', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <th scope="row"><?php esc_html_e('Fallback-Kontakt-E-Mail (keine freien Termine)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <td>
+                            <input class="regular-text" type="email" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[no_slots_contact_email]" value="<?php echo esc_attr((string) ($options['no_slots_contact_email'] ?? '')); ?>" placeholder="contact@example.com">
+                            <p class="description"><?php esc_html_e('Wird angezeigt, wenn im konfigurierten Suchzeitraum keine freien Termine verfuegbar sind.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Zu synchronisierende Kalender', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <textarea class="large-text code" rows="6" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_calendar_sources_raw]" required><?php echo esc_textarea((string) ($options['api_calendar_sources_raw'] ?? '')); ?></textarea>
-                            <p class="description"><?php esc_html_e('Required. One calendar per line: calendar_id|Label|private or official|general or holiday', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Erforderlich. Ein Kalender pro Zeile: calendar_id|Bezeichnung|private oder official|general oder holiday', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><?php esc_html_e('Google write target calendar ID', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <th scope="row"><?php esc_html_e('Google Zielkalender-ID fuer Schreibzugriffe', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <input class="regular-text code" type="text" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_google_write_calendar_id]" value="<?php echo esc_attr((string) $options['api_google_write_calendar_id']); ?>" placeholder="primary" required>
-                            <p class="description"><?php esc_html_e('Required when "Create Google events" is enabled. No fallback calendar is used.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Erforderlich, wenn "Google-Events erstellen" aktiv ist. Es wird kein Fallback-Kalender verwendet.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><?php esc_html_e('Weekly availability rules', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <th scope="row"><?php esc_html_e('Woechentliche Verfuegbarkeitsregeln', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <textarea class="large-text code" rows="7" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_availability_raw]" required><?php echo esc_textarea((string) ($options['api_availability_raw'] ?? '')); ?></textarea>
-                            <p class="description"><?php esc_html_e('Required. One line per weekday. Format: day|HH:MM-HH:MM,HH:MM-HH:MM', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                            <p class="description"><?php esc_html_e('Erforderlich. Eine Zeile pro Wochentag. Format: day|HH:MM-HH:MM,HH:MM-HH:MM', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                         </td>
                     </tr>
                 </table>
 
                 <details style="margin-top:12px;">
-                    <summary><strong><?php esc_html_e('Expert settings (optional)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></strong></summary>
-                    <p class="description"><?php esc_html_e('Optional fine-tuning for sync behavior and autoresponder customization.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                    <summary><strong><?php esc_html_e('Experteneinstellungen (optional)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></strong></summary>
+                    <p class="description"><?php esc_html_e('Optionales Feintuning fuer Sync-Verhalten und Autoresponder-Anpassung.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
 
                     <table class="form-table" role="presentation">
                         <tr>
-                            <th scope="row"><?php esc_html_e('Enable API sync', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('API-Sync aktivieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td>
                                 <label>
                                     <input type="checkbox" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_sync_enabled]" value="1" <?php checked(!empty($options['api_sync_enabled'])); ?>>
-                                    <?php esc_html_e('Allow API to run calendar free/busy synchronization.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>
+                                    <?php esc_html_e('Erlaubt der API die Ausfuehrung der Kalender Frei/Belegt-Synchronisierung.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>
                                 </label>
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Sync interval (minutes)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Sync-Intervall (Minuten)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td><input class="small-text" type="number" min="5" max="720" step="5" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_sync_interval_minutes]" value="<?php echo esc_attr((string) $options['api_sync_interval_minutes']); ?>"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Create Google events', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Google-Events erstellen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td>
                                 <label>
                                     <input type="checkbox" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[api_google_write_events_enabled]" value="1" <?php checked(!empty($options['api_google_write_events_enabled'])); ?>>
-                                    <?php esc_html_e('After a successful reservation, also create an event in Google Calendar.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>
+                                    <?php esc_html_e('Nach einer erfolgreichen Reservierung wird zusaetzlich ein Event im Google Kalender erstellt.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>
                                 </label>
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Contact channels', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Kontaktkanaele', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td>
                                 <textarea class="large-text code" rows="8" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[contact_channels_raw]"><?php echo esc_textarea((string) ($options['contact_channels_raw'] ?? '')); ?></textarea>
-                                <p class="description"><?php esc_html_e('One channel per line: key|Label|input_kind(tel/email/url/text)|placeholder|value label|ICS template', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                                <p class="description"><?php esc_html_e('Ein Kanal pro Zeile: key|Bezeichnung|input_kind(tel/email/url/text)|placeholder|Wertbezeichnung|ICS-Vorlage', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Prominent channels count', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Anzahl prominent angezeigter Kanaele', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td><input class="small-text" type="number" min="1" max="6" step="1" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[contact_prominent_count]" value="<?php echo esc_attr((string) $options['contact_prominent_count']); ?>"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('More channels label', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Beschriftung: Mehr Kanaele', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td><input class="regular-text" type="text" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[contact_more_label]" value="<?php echo esc_attr((string) $options['contact_more_label']); ?>"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Less channels label', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Beschriftung: Weniger Kanaele', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td><input class="regular-text" type="text" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[contact_less_label]" value="<?php echo esc_attr((string) $options['contact_less_label']); ?>"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Autoresponder subject', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Autoresponder-Betreff', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td><input class="regular-text" type="text" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[autoresponder_subject]" value="<?php echo esc_attr((string) $options['autoresponder_subject']); ?>"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><?php esc_html_e('Autoresponder body', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                            <th scope="row"><?php esc_html_e('Autoresponder-Text', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                             <td>
                                 <textarea class="large-text code" rows="8" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[autoresponder_body]"><?php echo esc_textarea((string) $options['autoresponder_body']); ?></textarea>
-                                <p class="description"><?php esc_html_e('Placeholders: {name}, {email}, {start}, {end}, {timezone}, {note}, {reference}, {contact_method}, {contact_value}, {contact_detail}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                                <p class="description"><?php esc_html_e('Platzhalter: {name}, {email}, {subject}, {start}, {end}, {timezone}, {note}, {reference}, {contact_method}, {contact_value}, {contact_detail}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                             </td>
                         </tr>
                     </table>
@@ -266,6 +285,22 @@ final class Restatify_Booking_Assistant_UI {
             <p><strong><?php esc_html_e('Shortcode:', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></strong> [restatify_booking_popup]</p>
         </div>
         <?php
+    }
+
+    /**
+     * @param array<string,mixed> $options
+     */
+    private function is_multi_chat_overlay_chat_enabled(): bool {
+        if (!class_exists('Restatify_Multi_Chat_Overlay')) {
+            return false;
+        }
+
+        $multi_chat_options = get_option('restatify_multi_chat_overlay_options', []);
+        if (!is_array($multi_chat_options)) {
+            return false;
+        }
+
+        return !empty($multi_chat_options['enabled']) && !empty($multi_chat_options['own_chat_enabled']);
     }
 
     /**
@@ -295,19 +330,28 @@ final class Restatify_Booking_Assistant_UI {
             <?php endif; ?>
             <div class="restatify-booking__overlay" data-booking-overlay hidden>
                 <div class="restatify-booking__dialog" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr($title); ?>">
-                    <button type="button" class="restatify-booking__close" data-booking-close aria-label="<?php esc_attr_e('Close', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>">&times;</button>
+                    <button type="button" class="restatify-booking__close" data-booking-close aria-label="<?php esc_attr_e('Schliessen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>">&times;</button>
                     <h3 class="restatify-booking__title"><?php echo esc_html($title); ?></h3>
 
                     <div class="restatify-booking__status" data-booking-status></div>
-                    <div class="restatify-booking__slots" data-booking-slots></div>
 
                     <form class="restatify-booking__form" data-booking-form hidden>
                         <input type="hidden" name="slot_start" data-slot-start>
                         <div class="restatify-booking__wizard" data-booking-wizard>
                             <div class="restatify-booking__wizard-track" data-booking-steps>
                                 <section class="restatify-booking__wizard-step" data-booking-step>
+                                    <p class="restatify-booking__times-heading"><?php esc_html_e('Tag im Kalender auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                                    <div class="restatify-booking__calendar" data-booking-calendar></div>
+                                </section>
+
+                                <section class="restatify-booking__wizard-step" data-booking-step>
+                                    <p class="restatify-booking__times-heading"><?php esc_html_e('Uhrzeit auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                                    <div class="restatify-booking__times" data-booking-times></div>
+                                </section>
+
+                                <section class="restatify-booking__wizard-step" data-booking-step>
                                     <div class="restatify-booking__contact-block">
-                                        <span class="restatify-booking__contact-heading"><?php esc_html_e('Preferred contact channel', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <span class="restatify-booking__contact-heading"><?php esc_html_e('Bevorzugter Kontaktkanal', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
                                         <input type="hidden" name="contact_method" data-contact-method value="<?php echo esc_attr((string) $default_channel['key']); ?>" required>
                                         <div class="restatify-booking__contact-channels<?php echo count($contact_channels) > $prominent_count ? ' is-collapsed' : ''; ?>" data-contact-channels>
                                             <?php foreach ($contact_channels as $index => $channel) :
@@ -364,28 +408,31 @@ final class Restatify_Booking_Assistant_UI {
                                         <input type="text" name="name" required maxlength="190">
                                     </label>
                                     <label>
-                                        <span><?php esc_html_e('Email', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <span><?php esc_html_e('E-Mail', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
                                         <input type="email" name="email" required maxlength="190">
                                     </label>
                                 </section>
 
                                 <section class="restatify-booking__wizard-step" data-booking-step>
                                     <label>
-                                        <span><?php esc_html_e('Notes', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
-                                        <textarea name="note" rows="3" maxlength="1000"></textarea>
+                                        <span><?php esc_html_e('Titel für den Termin', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <input type="text" name="subject" required maxlength="190" placeholder="<?php esc_attr_e('z.B. Erstberatung Immobilienkauf', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>">
+                                    </label>
+                                    <label>
+                                        <span><?php esc_html_e('Freie Beschreibung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <textarea name="note" rows="4" maxlength="1000"></textarea>
                                     </label>
                                 </section>
                             </div>
                         </div>
 
                         <div class="restatify-booking__wizard-nav">
-                            <button type="button" class="restatify-booking__wizard-btn" data-step-prev hidden><?php esc_html_e('Back', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
-                            <span class="restatify-booking__wizard-indicator" data-step-indicator>1/3</span>
-                            <button type="button" class="restatify-booking__wizard-btn" data-step-next><?php esc_html_e('Next', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                            <button type="button" class="restatify-booking__wizard-btn" data-step-prev hidden><?php esc_html_e('Zurueck', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                            <span class="restatify-booking__wizard-indicator" data-step-indicator>1/5</span>
+                            <button type="button" class="restatify-booking__wizard-btn" data-step-next><?php esc_html_e('Weiter', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
                         </div>
 
-                        <button type="submit" class="restatify-booking__submit" hidden><?php esc_html_e('Reserve now', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
-                        <button type="button" class="restatify-booking__close" data-booking-cancel><?php esc_html_e('Cancel booking', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                        <button type="submit" class="restatify-booking__submit" hidden><?php esc_html_e('Jetzt reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
                     </form>
                 </div>
             </div>

@@ -13,6 +13,19 @@
     var slotsNode = root.querySelector('[data-booking-slots]');
     var form = root.querySelector('[data-booking-form]');
     var slotStartInput = root.querySelector('[data-slot-start]');
+    var wizardTrack = root.querySelector('[data-booking-steps]');
+    var wizardSteps = root.querySelectorAll('[data-booking-step]');
+    var wizardPrev = root.querySelector('[data-step-prev]');
+    var wizardNext = root.querySelector('[data-step-next]');
+    var wizardIndicator = root.querySelector('[data-step-indicator]');
+    var contactMethodInput = root.querySelector('[data-contact-method]');
+    var contactChannelsNode = root.querySelector('[data-contact-channels]');
+    var contactChannelsToggle = root.querySelector('[data-contact-channels-toggle]');
+    var contactValueInput = root.querySelector('[data-contact-value]');
+    var contactValueLabel = root.querySelector('[data-contact-value-label]');
+    var submitBtn = root.querySelector('.restatify-booking__submit');
+    var autoCloseTimer = null;
+    var defaultContactMethod = contactMethodInput ? String(contactMethodInput.value || '') : '';
 
     var bookingState = {
       active: false,
@@ -20,14 +33,223 @@
       confirmed: false,
       slots: [],
       selectedDayKey: '',
-      currentMonth: null
+      currentMonth: null,
+      shouldScrollToTimes: false,
+      currentFormStep: 0
     };
 
     if (!closeBtn || !overlay || !statusNode || !slotsNode || !form || !slotStartInput) {
       return;
     }
 
+    function stepCount() {
+      return wizardSteps ? wizardSteps.length : 0;
+    }
+
+    function validateCurrentStep() {
+      if (!wizardSteps || !wizardSteps.length) {
+        return true;
+      }
+
+      var current = wizardSteps[bookingState.currentFormStep];
+      if (!current) {
+        return true;
+      }
+
+      var requiredFields = current.querySelectorAll('input[required], textarea[required], select[required]');
+      for (var i = 0; i < requiredFields.length; i += 1) {
+        var field = requiredFields[i];
+        if (!field.checkValidity()) {
+          field.reportValidity();
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    function updateFormWizard() {
+      var total = stepCount();
+      if (!wizardTrack || total === 0) {
+        if (submitBtn) {
+          submitBtn.hidden = false;
+        }
+        return;
+      }
+
+      if (bookingState.currentFormStep < 0) {
+        bookingState.currentFormStep = 0;
+      }
+      if (bookingState.currentFormStep > total - 1) {
+        bookingState.currentFormStep = total - 1;
+      }
+
+      wizardTrack.style.transform = 'translateX(-' + String(bookingState.currentFormStep * 100) + '%)';
+
+      for (var i = 0; i < wizardSteps.length; i += 1) {
+        wizardSteps[i].setAttribute('aria-hidden', i === bookingState.currentFormStep ? 'false' : 'true');
+      }
+
+      var isFirst = bookingState.currentFormStep === 0;
+      var isLast = bookingState.currentFormStep === total - 1;
+
+      if (wizardPrev) {
+        wizardPrev.hidden = isFirst;
+      }
+
+      if (wizardNext) {
+        wizardNext.hidden = isLast;
+      }
+
+      if (wizardIndicator) {
+        wizardIndicator.textContent = String(bookingState.currentFormStep + 1) + '/' + String(total);
+      }
+
+      if (submitBtn) {
+        submitBtn.hidden = !isLast;
+      }
+    }
+
+    function resetFormWizard() {
+      bookingState.currentFormStep = 0;
+      updateFormWizard();
+    }
+
+    if (wizardPrev) {
+      wizardPrev.addEventListener('click', function () {
+        bookingState.currentFormStep -= 1;
+        updateFormWizard();
+      });
+    }
+
+    if (wizardNext) {
+      wizardNext.addEventListener('click', function () {
+        if (!validateCurrentStep()) {
+          return;
+        }
+
+        bookingState.currentFormStep += 1;
+        updateFormWizard();
+      });
+    }
+
+    updateFormWizard();
+
+    function getContactButtons() {
+      if (!contactChannelsNode) {
+        return [];
+      }
+
+      return Array.prototype.slice.call(contactChannelsNode.querySelectorAll('[data-contact-channel]'));
+    }
+
+    function getSelectedContactButton() {
+      var buttons = getContactButtons();
+      var selected = buttons.find(function (button) {
+        return button.classList.contains('is-selected');
+      });
+
+      return selected || buttons[0] || null;
+    }
+
+    function setSelectedContactMethod(methodKey) {
+      var buttons = getContactButtons();
+      if (!buttons.length) {
+        return;
+      }
+
+      var fallback = buttons[0];
+      var selected = fallback;
+      buttons.forEach(function (button) {
+        if (String(button.getAttribute('data-method-key') || '') === String(methodKey || '')) {
+          selected = button;
+        }
+      });
+
+      buttons.forEach(function (button) {
+        var active = button === selected;
+        button.classList.toggle('is-selected', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+
+      if (contactMethodInput) {
+        contactMethodInput.value = String(selected.getAttribute('data-method-key') || '');
+      }
+    }
+
+    function syncContactField() {
+      if (!contactValueInput || !contactValueLabel) {
+        return;
+      }
+
+      var selected = getSelectedContactButton();
+      if (!selected) {
+        return;
+      }
+
+      var inputKind = String(selected.getAttribute('data-input-kind') || 'text');
+      var valueLabel = String(selected.getAttribute('data-value-label') || 'Kontaktdaten');
+      var placeholder = String(selected.getAttribute('data-placeholder') || '');
+
+      if (inputKind === 'email') {
+        contactValueInput.type = 'email';
+        contactValueInput.inputMode = 'email';
+      } else if (inputKind === 'tel') {
+        contactValueInput.type = 'tel';
+        contactValueInput.inputMode = 'tel';
+      } else if (inputKind === 'url') {
+        contactValueInput.type = 'url';
+        contactValueInput.inputMode = 'url';
+      } else {
+        contactValueInput.type = 'text';
+        contactValueInput.inputMode = 'text';
+      }
+
+      contactValueLabel.textContent = valueLabel;
+      contactValueInput.placeholder = placeholder;
+    }
+
+    function initContactChannelToggle() {
+      if (!contactChannelsNode || !contactChannelsToggle) {
+        return;
+      }
+
+      var moreLabel = String(contactChannelsToggle.getAttribute('data-label-more') || 'More...');
+      var lessLabel = String(contactChannelsToggle.getAttribute('data-label-less') || 'Less');
+
+      function update(expanded) {
+        contactChannelsNode.classList.toggle('is-expanded', expanded);
+        contactChannelsNode.classList.toggle('is-collapsed', !expanded);
+        contactChannelsToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        contactChannelsToggle.textContent = expanded ? lessLabel : moreLabel;
+      }
+
+      update(contactChannelsNode.classList.contains('is-expanded'));
+      contactChannelsToggle.addEventListener('click', function () {
+        update(!contactChannelsNode.classList.contains('is-expanded'));
+      });
+    }
+
+    var contactButtons = getContactButtons();
+    if (contactButtons.length > 0) {
+      contactButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          setSelectedContactMethod(button.getAttribute('data-method-key') || '');
+          syncContactField();
+        });
+      });
+
+      setSelectedContactMethod(defaultContactMethod);
+      initContactChannelToggle();
+      syncContactField();
+    }
+
     function openPopup() {
+      if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
+      }
+
       overlay.hidden = false;
       form.hidden = true;
       statusNode.textContent = restatifyBookingAssistant.strings.loading;
@@ -39,6 +261,11 @@
     }
 
     function closePopup(cancelledByVisitor) {
+      if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = null;
+      }
+
       overlay.hidden = true;
 
       if (cancelledByVisitor && bookingState.active && !bookingState.confirmed) {
@@ -51,6 +278,19 @@
       bookingState.selectedSlot = '';
       slotStartInput.value = '';
       form.hidden = true;
+      resetFormWizard();
+      setSubmitBusy(false);
+    }
+
+    function setSubmitBusy(isBusy) {
+      if (!submitBtn) {
+        return;
+      }
+
+      submitBtn.disabled = isBusy;
+      submitBtn.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+      submitBtn.style.opacity = isBusy ? '0.7' : '';
+      submitBtn.style.cursor = isBusy ? 'wait' : '';
     }
 
     root.restatifyOpenPopup = openPopup;
@@ -144,6 +384,13 @@
       wrapper.appendChild(calendar);
       wrapper.appendChild(times);
       slotsNode.appendChild(wrapper);
+
+      if (bookingState.shouldScrollToTimes) {
+        bookingState.shouldScrollToTimes = false;
+        window.requestAnimationFrame(function () {
+          times.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
     }
 
     function renderCalendar(container) {
@@ -228,8 +475,10 @@
             return function () {
               bookingState.selectedDayKey = clickedKey;
               bookingState.selectedSlot = '';
+              bookingState.shouldScrollToTimes = true;
               slotStartInput.value = '';
               form.hidden = true;
+              resetFormWizard();
               statusNode.textContent = restatifyBookingAssistant.strings.pickTime || restatifyBookingAssistant.strings.reserve;
               renderCalendarAndSlots();
             };
@@ -272,6 +521,7 @@
           slotStartInput.value = slot.start_iso;
           bookingState.selectedSlot = slot.start_iso;
           form.hidden = false;
+          resetFormWizard();
           statusNode.textContent = restatifyBookingAssistant.strings.reserve + ': ' + startDate.toLocaleString();
         });
 
@@ -323,12 +573,17 @@
     }
 
     function reserveSlot(formData) {
+      setSubmitBusy(true);
+      statusNode.textContent = restatifyBookingAssistant.strings.reserve + '...';
+
       var body = new URLSearchParams();
       body.set('action', 'restatify_booking_reserve_slot');
       body.set('nonce', restatifyBookingAssistant.nonce);
       body.set('name', formData.get('name') || '');
       body.set('email', formData.get('email') || '');
       body.set('note', formData.get('note') || '');
+      body.set('contact_method', formData.get('contact_method') || 'phone');
+      body.set('contact_value', formData.get('contact_value') || '');
       body.set('slot_start', slotStartInput.value);
 
       fetch(restatifyBookingAssistant.ajaxUrl, {
@@ -341,6 +596,7 @@
         return response.json();
       }).then(function (data) {
         if (!data || !data.success) {
+          setSubmitBusy(false);
           var message = data && data.data && data.data.message ? String(data.data.message) : restatifyBookingAssistant.strings.error;
           statusNode.textContent = message;
           return;
@@ -356,8 +612,16 @@
 
         statusNode.textContent = restatifyBookingAssistant.strings.success;
         form.reset();
+        setSelectedContactMethod(defaultContactMethod);
+        syncContactField();
+        resetFormWizard();
         form.hidden = true;
+
+        autoCloseTimer = setTimeout(function () {
+          closePopup(false);
+        }, 1400);
       }).catch(function () {
+        setSubmitBusy(false);
         statusNode.textContent = restatifyBookingAssistant.strings.error;
       });
     }

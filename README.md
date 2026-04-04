@@ -36,6 +36,45 @@ Version: 1.2.1
 
 Requires a running Restatify Booking API instance.
 
+## Architecture
+
+The plugin is split into small classes with focused responsibilities:
+
+- `wp_restatify-booking-assistant.php`
+	Bootstrap file: loads classes, starts plugin, keeps optional AI helper function.
+- `includes/class-restatify-booking-assistant-plugin.php`
+	Composition root: wires services and registers all WordPress hooks.
+- `includes/class-restatify-booking-assistant-constants.php`
+	Shared constants (option key, nonce action, text domain, etc.).
+- `includes/class-restatify-booking-assistant-options.php`
+	Settings lifecycle: defaults, sanitizing, parser helpers, translated option reads.
+- `includes/class-restatify-booking-assistant-api-client.php`
+	Backend API communication: authenticated requests and sync config push.
+- `includes/class-restatify-booking-assistant-booking-controller.php`
+	AJAX booking endpoints: slot search and reservation with contact channel validation.
+- `includes/class-restatify-booking-assistant-autoresponder.php`
+	Confirmation email and ICS generation.
+- `includes/class-restatify-booking-assistant-ui.php`
+	Frontend rendering/assets and admin settings page rendering.
+
+### Public interfaces
+
+Public methods in the classes above are documented with short PHPDoc blocks.
+These docs describe purpose, expected payloads, and behavior so future changes can be made safely.
+
+### Request flow
+
+1. Frontend JS posts to admin-ajax.
+2. `Booking_Controller` validates payload and channel-specific contact data.
+3. `Api_Client` sends reservation to Booking API.
+4. `Autoresponder` sends email + ICS with channel-aware contact details.
+
+### Why this split
+
+- Smaller files are easier to review and test.
+- Naming reflects intent (`Options`, `Api_Client`, `Booking_Controller`, `UI`).
+- Changes in one area (for example API payloads) no longer require touching rendering code.
+
 ## Polylang
 
 When Polylang is active, configurable booking autoresponder texts are registered in translation group:
@@ -77,6 +116,11 @@ Weekly availability lines:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 1.2.2
+
+- Refactored monolithic plugin file into modular classes under `includes/`.
+- Added architecture documentation with clear class responsibilities and flow.
 
 ### 1.2.1
 

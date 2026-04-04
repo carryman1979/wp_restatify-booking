@@ -180,6 +180,46 @@
   gap: 0.6rem;
 }
 
+.restatify-booking__wizard {
+  overflow: hidden;
+}
+
+.restatify-booking__wizard-track {
+  display: flex;
+  transition: transform 0.28s ease;
+  will-change: transform;
+}
+
+.restatify-booking__wizard-step {
+  flex: 0 0 100%;
+  min-width: 100%;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.restatify-booking__wizard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.restatify-booking__wizard-btn {
+  appearance: none;
+  border: 1px solid var(--rs-booking-border);
+  background: var(--rs-booking-surface);
+  color: var(--rs-booking-text);
+  border-radius: 8px;
+  padding: 0.42rem 0.72rem;
+  cursor: pointer;
+  font-family: var(--rs-booking-font);
+}
+
+.restatify-booking__wizard-indicator {
+  font-size: 0.88rem;
+  color: var(--rs-booking-muted-text);
+}
+
 .restatify-booking__form[hidden] {
   display: none !important;
 }
@@ -189,7 +229,66 @@
   gap: 0.25rem;
 }
 
+.restatify-booking__contact-block {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.restatify-booking__contact-heading {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.restatify-booking__contact-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.restatify-booking__contact-channels.is-collapsed .restatify-booking__contact-channel.is-extra {
+  display: none;
+}
+
+.restatify-booking__contact-channel {
+  appearance: none;
+  border: 1px solid var(--rs-booking-border);
+  background: var(--rs-booking-surface);
+  color: var(--rs-booking-text);
+  border-radius: 999px;
+  font-size: 0.86rem;
+  line-height: 1;
+  padding: 0.45rem 0.72rem;
+  cursor: pointer;
+}
+
+.restatify-booking__contact-channel.is-selected {
+  background: var(--rs-booking-accent);
+  border-color: var(--rs-booking-accent);
+  color: var(--rs-booking-accent-contrast);
+}
+
+.restatify-booking__contact-toggle {
+  appearance: none;
+  border: 1px solid var(--rs-booking-border);
+  background: color-mix(in srgb, var(--rs-booking-surface) 88%, var(--rs-booking-text) 12%);
+  color: var(--rs-booking-text);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.45rem 0.72rem;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.restatify-booking__contact-toggle:hover,
+.restatify-booking__contact-toggle:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--rs-booking-surface) 72%, var(--rs-booking-text) 28%);
+}
+
 .restatify-booking__form input,
+.restatify-booking__form select,
 .restatify-booking__form textarea {
   width: 100%;
   border: 1px solid var(--rs-booking-border);

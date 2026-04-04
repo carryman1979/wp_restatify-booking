@@ -55,7 +55,7 @@
       statusNode.textContent = '';
 
       var headline = document.createElement('p');
-      headline.textContent = strings.emptyRange || strings.empty || 'Im ausgewaehlten Zeitraum wurden keine freien Termine gefunden.';
+      headline.textContent = strings.emptyRange || strings.empty || 'Im ausgewählten Zeitraum wurden keine freien Termine gefunden.';
       statusNode.appendChild(headline);
 
       if (chatAvailable) {
@@ -702,3 +702,5 @@
     }
   });
 })();
+
+

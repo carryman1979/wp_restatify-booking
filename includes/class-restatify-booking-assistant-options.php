@@ -161,7 +161,7 @@ final class Restatify_Booking_Assistant_Options {
             'contact_more_label' => __('Mehr...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             'contact_less_label' => __('Weniger', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             'autoresponder_subject' => __('Deine Restatify Terminreservierung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'autoresponder_body' => "Hallo {name},\n\nvielen Dank fuer deine Reservierung.\n\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nReferenz: {reference}\n\nViele Gruesse\nRestatify",
+            'autoresponder_body' => "Hallo {name},\n\nvielen Dank für deine Reservierung.\n\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nReferenz: {reference}\n\nViele Grüße\nRestatify",
         ];
     }
 
@@ -375,3 +375,5 @@ final class Restatify_Booking_Assistant_Options {
         return $value;
     }
 }
+
+

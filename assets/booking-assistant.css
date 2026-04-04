@@ -323,6 +323,19 @@
   color: var(--rs-booking-text);
   background: var(--rs-booking-surface);
   font-family: var(--rs-booking-font);
+  box-sizing: border-box;
+}
+
+.restatify-booking__form input,
+.restatify-booking__form select {
+  height: 2.6rem;
+  line-height: 1.3;
+}
+
+.restatify-booking__form textarea {
+  min-height: 7.5rem;
+  line-height: 1.4;
+  resize: vertical;
 }
 
 .restatify-booking__submit {

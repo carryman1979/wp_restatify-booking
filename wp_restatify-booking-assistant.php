@@ -138,6 +138,8 @@ final class Restatify_Booking_Assistant {
                 'loading' => __('Searching free slots...', 'restatify-booking-assistant'),
                 'empty' => __('No free slots found in this period.', 'restatify-booking-assistant'),
                 'reserve' => __('Reserve slot', 'restatify-booking-assistant'),
+                'selectDay' => __('Tag im Kalender auswählen.', 'restatify-booking-assistant'),
+                'pickTime' => __('Uhrzeit auswählen.', 'restatify-booking-assistant'),
                 'success' => __('Reservation received. Check your email for details.', 'restatify-booking-assistant'),
                 'error' => __('Reservation failed. Please try another slot.', 'restatify-booking-assistant'),
             ],
@@ -254,7 +256,8 @@ final class Restatify_Booking_Assistant {
             wp_send_json_error(['message' => $response->get_error_message()], 500);
         }
 
-        $slots = is_array($response['slots'] ?? null) ? array_slice($response['slots'], 0, 24) : [];
+        // Calendar view needs a broader horizon than the old flat list view.
+        $slots = is_array($response['slots'] ?? null) ? array_slice($response['slots'], 0, 320) : [];
         wp_send_json_success(['slots' => $slots]);
     }
 
@@ -403,8 +406,24 @@ final class Restatify_Booking_Assistant {
         $status = (int) wp_remote_retrieve_response_code($response);
         $body = json_decode((string) wp_remote_retrieve_body($response), true);
 
-        if ($status < 200 || $status >= 300 || !is_array($body)) {
-            return new WP_Error('restatify_booking_api_error', __('Booking API request failed.', 'restatify-booking-assistant'));
+        if ($status < 200 || $status >= 300) {
+            $message = '';
+            if (is_array($body)) {
+                $message = trim((string) ($body['detail'] ?? $body['message'] ?? ''));
+            }
+
+            if ($message === '') {
+                $message = __('Booking backend is currently unavailable. Please try again later.', 'restatify-booking-assistant');
+            }
+
+            return new WP_Error('restatify_booking_api_error', $message, ['status' => $status]);
+        }
+
+        if (!is_array($body)) {
+            return new WP_Error(
+                'restatify_booking_api_error',
+                __('Booking backend is currently unavailable. Please try again later.', 'restatify-booking-assistant')
+            );
         }
 
         return $body;
@@ -496,7 +515,7 @@ final class Restatify_Booking_Assistant {
         return str_replace(["\r\n", "\n", "\r"], '\\n', $value);
     }
 
-    private function sanitize_options($input): array {
+    public function sanitize_options($input): array {
         $defaults = $this->get_default_options();
         $input = is_array($input) ? $input : [];
 
@@ -750,11 +769,28 @@ final class Restatify_Booking_Assistant {
                             <p class="description"><?php esc_html_e('How many days ahead the popup searches for free slots. Higher values show more options but can increase response time.', 'restatify-booking-assistant'); ?></p>
                         </td>
                     </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Calendars to sync', 'restatify-booking-assistant'); ?></th>
+                        <td>
+                            <textarea class="large-text code" rows="6" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_calendar_sources_raw]" required><?php echo esc_textarea((string) ($options['api_calendar_sources_raw'] ?? '')); ?></textarea>
+                            <p class="description"><?php esc_html_e('Required. One calendar per line: calendar_id|Label|private or official|general or holiday', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('Example: company-calendar@group.calendar.google.com|Company Main|official|general', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('Holiday example: de.german#holiday@group.v.calendar.google.com|DE Holidays|official|holiday', 'restatify-booking-assistant'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Weekly availability rules', 'restatify-booking-assistant'); ?></th>
+                        <td>
+                            <textarea class="large-text code" rows="7" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_availability_raw]" required><?php echo esc_textarea((string) ($options['api_availability_raw'] ?? '')); ?></textarea>
+                            <p class="description"><?php esc_html_e('Required. One line per weekday. Format: day|HH:MM-HH:MM,HH:MM-HH:MM', 'restatify-booking-assistant'); ?></p>
+                            <p class="description"><?php esc_html_e('Allowed days: mo, di, mi, do, fr, sa, so (or mon..sun). Example: mi|09:00-12:00,13:00-16:30', 'restatify-booking-assistant'); ?></p>
+                        </td>
+                    </tr>
                 </table>
 
                 <details style="margin-top:12px;">
                     <summary><strong><?php esc_html_e('Expert settings (optional)', 'restatify-booking-assistant'); ?></strong></summary>
-                    <p class="description"><?php esc_html_e('Advanced sync controls, calendar mapping and autoresponder customization.', 'restatify-booking-assistant'); ?></p>
+                    <p class="description"><?php esc_html_e('Optional fine-tuning for sync behavior and autoresponder customization.', 'restatify-booking-assistant'); ?></p>
 
                     <table class="form-table" role="presentation">
                     <tr>
@@ -769,23 +805,6 @@ final class Restatify_Booking_Assistant {
                     <tr>
                         <th scope="row"><?php esc_html_e('Sync interval (minutes)', 'restatify-booking-assistant'); ?></th>
                         <td><input class="small-text" type="number" min="5" max="720" step="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_sync_interval_minutes]" value="<?php echo esc_attr((string) $options['api_sync_interval_minutes']); ?>"></td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e('Calendars to sync', 'restatify-booking-assistant'); ?></th>
-                        <td>
-                            <textarea class="large-text code" rows="6" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_calendar_sources_raw]"><?php echo esc_textarea((string) ($options['api_calendar_sources_raw'] ?? '')); ?></textarea>
-                            <p class="description"><?php esc_html_e('One calendar per line: calendar_id|Label|private or official|general or holiday', 'restatify-booking-assistant'); ?></p>
-                            <p class="description"><?php esc_html_e('Example: company-calendar@group.calendar.google.com|Company Main|official|general', 'restatify-booking-assistant'); ?></p>
-                            <p class="description"><?php esc_html_e('Holiday example: de.german#holiday@group.v.calendar.google.com|DE Holidays|official|holiday', 'restatify-booking-assistant'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e('Weekly availability rules', 'restatify-booking-assistant'); ?></th>
-                        <td>
-                            <textarea class="large-text code" rows="7" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_availability_raw]"><?php echo esc_textarea((string) ($options['api_availability_raw'] ?? '')); ?></textarea>
-                            <p class="description"><?php esc_html_e('One line per weekday. Format: day|HH:MM-HH:MM,HH:MM-HH:MM', 'restatify-booking-assistant'); ?></p>
-                            <p class="description"><?php esc_html_e('Allowed days: mo, di, mi, do, fr, sa, so (or mon..sun). Example: mi|09:00-12:00,13:00-16:30', 'restatify-booking-assistant'); ?></p>
-                        </td>
                     </tr>
                     <tr>
                         <th scope="row"><?php esc_html_e('Autoresponder subject', 'restatify-booking-assistant'); ?></th>

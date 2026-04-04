@@ -35,6 +35,10 @@
   padding: 1rem;
 }
 
+.restatify-booking__overlay[hidden] {
+  display: none !important;
+}
+
 .restatify-booking__dialog {
   width: min(640px, 100%);
   background: var(--rs-booking-surface);
@@ -65,6 +69,95 @@
   overflow-y: auto;
 }
 
+.restatify-booking__calendar-wrap {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.restatify-booking__calendar {
+  border: 1px solid var(--rs-booking-border);
+  border-radius: var(--rs-booking-radius-md);
+  padding: 0.6rem;
+  background: var(--rs-booking-surface);
+}
+
+.restatify-booking__calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.restatify-booking__calendar-title {
+  font-size: 0.95rem;
+  text-transform: capitalize;
+}
+
+.restatify-booking__calendar-nav {
+  border: 1px solid var(--rs-booking-border);
+  background: var(--rs-booking-surface);
+  color: var(--rs-booking-text);
+  border-radius: 8px;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+}
+
+.restatify-booking__calendar-weekdays,
+.restatify-booking__calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.restatify-booking__calendar-weekdays span {
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--rs-booking-muted-text);
+  padding: 0.25rem 0;
+}
+
+.restatify-booking__calendar-empty {
+  display: block;
+  min-height: 2rem;
+}
+
+.restatify-booking__calendar-day {
+  border: 1px solid var(--rs-booking-border);
+  border-radius: 8px;
+  background: var(--rs-booking-surface);
+  color: var(--rs-booking-text);
+  min-height: 2rem;
+  cursor: pointer;
+}
+
+.restatify-booking__calendar-day.is-available {
+  border-color: color-mix(in srgb, var(--rs-booking-accent) 45%, var(--rs-booking-border) 55%);
+}
+
+.restatify-booking__calendar-day.is-selected {
+  background: var(--rs-booking-accent);
+  color: var(--rs-booking-accent-contrast);
+  border-color: var(--rs-booking-accent);
+}
+
+.restatify-booking__calendar-day.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.restatify-booking__times {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.restatify-booking__times-heading,
+.restatify-booking__times-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--rs-booking-muted-text);
+}
+
 .restatify-booking__slot {
   display: block;
   width: 100%;
@@ -85,6 +178,10 @@
 .restatify-booking__form {
   display: grid;
   gap: 0.6rem;
+}
+
+.restatify-booking__form[hidden] {
+  display: none !important;
 }
 
 .restatify-booking__form label {

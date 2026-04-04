@@ -48,7 +48,10 @@ final class Restatify_Booking_Assistant_Booking_Controller {
             wp_send_json_error(['message' => $response->get_error_message()], 500);
         }
 
-        $slots = is_array($response['slots'] ?? null) ? array_slice($response['slots'], 0, 320) : [];
+        $slots = is_array($response['slots'] ?? null) ? $response['slots'] : [];
+        $availability_rules = is_array($options['api_availability_rules'] ?? null) ? $options['api_availability_rules'] : [];
+        $slots = $this->filter_slots_by_availability($slots, $availability_rules, $timezone, $duration);
+        $slots = array_slice($slots, 0, 320);
         wp_send_json_success(['slots' => $slots]);
     }
 
@@ -160,5 +163,111 @@ final class Restatify_Booking_Assistant_Booking_Controller {
         if (!wp_verify_nonce($nonce, Restatify_Booking_Assistant_Constants::NONCE_ACTION)) {
             wp_send_json_error(['message' => __('Invalid request token.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)], 403);
         }
+    }
+
+    /**
+     * Ensures returned slots stay inside configured weekday windows in the selected timezone.
+     *
+     * @param array<int,mixed> $slots
+     * @param array<int,mixed> $availability_rules
+     * @return array<int,array<string,mixed>>
+     */
+    private function filter_slots_by_availability(array $slots, array $availability_rules, string $timezone, int $duration_minutes): array {
+        if (count($availability_rules) === 0) {
+            return array_values(array_filter($slots, static fn ($slot) => is_array($slot)));
+        }
+
+        try {
+            $tz = new DateTimeZone($timezone);
+        } catch (Exception $exception) {
+            $tz = wp_timezone();
+        }
+
+        $windows_by_weekday = [];
+        foreach ($availability_rules as $rule) {
+            if (!is_array($rule)) {
+                continue;
+            }
+
+            $weekday = isset($rule['weekday']) ? (int) $rule['weekday'] : -1;
+            if ($weekday < 0 || $weekday > 6) {
+                continue;
+            }
+
+            $windows = is_array($rule['windows'] ?? null) ? $rule['windows'] : [];
+            foreach ($windows as $window) {
+                if (!is_array($window)) {
+                    continue;
+                }
+
+                $start = trim((string) ($window['start'] ?? ''));
+                $end = trim((string) ($window['end'] ?? ''));
+                if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $start) || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $end)) {
+                    continue;
+                }
+
+                if ($start >= $end) {
+                    continue;
+                }
+
+                $windows_by_weekday[$weekday][] = [
+                    'start' => $start,
+                    'end' => $end,
+                ];
+            }
+        }
+
+        if (count($windows_by_weekday) === 0) {
+            return array_values(array_filter($slots, static fn ($slot) => is_array($slot)));
+        }
+
+        $filtered = [];
+        foreach ($slots as $slot) {
+            if (!is_array($slot)) {
+                continue;
+            }
+
+            $start_iso = trim((string) ($slot['start_iso'] ?? ''));
+            if ($start_iso === '') {
+                continue;
+            }
+
+            try {
+                $slot_start = (new DateTimeImmutable($start_iso))->setTimezone($tz);
+            } catch (Exception $exception) {
+                continue;
+            }
+
+            $slot_end = $slot_start->modify('+' . $duration_minutes . ' minutes');
+            $weekday = ((int) $slot_start->format('N')) - 1;
+            $start_hm = $slot_start->format('H:i');
+            $end_hm = $slot_end->format('H:i');
+
+            $windows = $windows_by_weekday[$weekday] ?? [];
+            if (count($windows) === 0) {
+                continue;
+            }
+
+            if ($slot_end->format('Y-m-d') !== $slot_start->format('Y-m-d')) {
+                continue;
+            }
+
+            $is_allowed = false;
+            foreach ($windows as $window) {
+                $window_start = (string) ($window['start'] ?? '');
+                $window_end = (string) ($window['end'] ?? '');
+
+                if ($start_hm >= $window_start && $end_hm <= $window_end) {
+                    $is_allowed = true;
+                    break;
+                }
+            }
+
+            if ($is_allowed) {
+                $filtered[] = $slot;
+            }
+        }
+
+        return $filtered;
     }
 }

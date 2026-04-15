@@ -26,6 +26,7 @@ final class Restatify_Booking_Assistant_Booking_Controller {
      * AJAX endpoint for searching free slots.
      */
     public function ajax_find_slots(): void {
+        $this->enforce_public_rate_limit('find_slots');
         $this->verify_nonce();
 
         $options = $this->options_service->get_options();
@@ -59,6 +60,7 @@ final class Restatify_Booking_Assistant_Booking_Controller {
      * AJAX endpoint for creating a reservation and sending confirmation.
      */
     public function ajax_reserve_slot(): void {
+        $this->enforce_public_rate_limit('reserve_slot');
         $this->verify_nonce();
 
         $options = $this->options_service->get_options();
@@ -163,6 +165,72 @@ final class Restatify_Booking_Assistant_Booking_Controller {
         if (!wp_verify_nonce($nonce, Restatify_Booking_Assistant_Constants::NONCE_ACTION)) {
             wp_send_json_error(['message' => __('Invalid request token.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)], 403);
         }
+    }
+
+    private function enforce_public_rate_limit(string $action): void {
+        $options = $this->options_service->get_options();
+        if (empty($options['public_rate_limit_enabled'])) {
+            return;
+        }
+
+        $window = max(10, min(3600, absint($options['public_rate_limit_window_seconds'] ?? 60)));
+        $max_find = max(1, min(120, absint($options['public_rate_limit_max_find_slots'] ?? 30)));
+        $max_reserve = max(1, min(60, absint($options['public_rate_limit_max_reserve_slot'] ?? 10)));
+
+        $max_requests = $action === 'reserve_slot' ? $max_reserve : $max_find;
+
+        $ip = $this->get_client_ip();
+        $ua = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field((string) wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
+        $fingerprint = md5($ip . '|' . $ua . '|' . $action);
+        $key = 'restatify_booking_rl_' . $fingerprint;
+
+        $bucket = get_transient($key);
+        if (!is_array($bucket)) {
+            $bucket = [
+                'count' => 0,
+                'start' => time(),
+            ];
+        }
+
+        $now = time();
+        $start = (int) ($bucket['start'] ?? $now);
+        if (($now - $start) >= $window) {
+            $bucket = [
+                'count' => 0,
+                'start' => $now,
+            ];
+        }
+
+        $bucket['count'] = (int) ($bucket['count'] ?? 0) + 1;
+
+        if ($bucket['count'] > $max_requests) {
+            set_transient($key, $bucket, $window);
+            wp_send_json_error(
+                ['message' => __('Too many requests. Please wait a moment and try again.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)],
+                429
+            );
+        }
+
+        set_transient($key, $bucket, $window);
+    }
+
+    private function get_client_ip(): string {
+        $forwarded = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? (string) wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']) : '';
+        if ($forwarded !== '') {
+            $parts = array_map('trim', explode(',', $forwarded));
+            foreach ($parts as $part) {
+                if (filter_var($part, FILTER_VALIDATE_IP)) {
+                    return $part;
+                }
+            }
+        }
+
+        $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) wp_unslash($_SERVER['REMOTE_ADDR']) : '';
+        if ($remote !== '' && filter_var($remote, FILTER_VALIDATE_IP)) {
+            return $remote;
+        }
+
+        return 'unknown';
     }
 
     /**

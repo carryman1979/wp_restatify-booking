@@ -192,6 +192,34 @@ final class Restatify_Booking_Assistant_UI {
                         </td>
                     </tr>
                     <tr>
+                        <th scope="row"><?php esc_html_e('Oeffentliches Rate-Limit aktivieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[public_rate_limit_enabled]" value="1" <?php checked(!empty($options['public_rate_limit_enabled'])); ?>>
+                                <?php esc_html_e('Begrenzt anonyme Booking-Anfragen pro Besucher-Fingerprint (IP + User-Agent).', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Rate-Limit Fenster (Sekunden)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <td>
+                            <input class="small-text" type="number" min="10" max="3600" step="10" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[public_rate_limit_window_seconds]" value="<?php echo esc_attr((string) $options['public_rate_limit_window_seconds']); ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Maximale Slot-Suchen pro Fenster', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <td>
+                            <input class="small-text" type="number" min="1" max="120" step="1" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[public_rate_limit_max_find_slots]" value="<?php echo esc_attr((string) $options['public_rate_limit_max_find_slots']); ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Maximale Reservierungen pro Fenster', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                        <td>
+                            <input class="small-text" type="number" min="1" max="60" step="1" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[public_rate_limit_max_reserve_slot]" value="<?php echo esc_attr((string) $options['public_rate_limit_max_reserve_slot']); ?>">
+                            <p class="description"><?php esc_html_e('Bei Ueberschreitung wird HTTP 429 zurueckgegeben und der Besucher kann spaeter erneut versuchen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row"><?php esc_html_e('Fallback-Kontakt-E-Mail (keine freien Termine)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
                         <td>
                             <input class="regular-text" type="email" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[no_slots_contact_email]" value="<?php echo esc_attr((string) ($options['no_slots_contact_email'] ?? '')); ?>" placeholder="contact@example.com">

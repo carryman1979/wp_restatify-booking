@@ -121,6 +121,7 @@ Woechentliche Verfuegbarkeitszeilen:
 
 - Monolithische Plugin-Datei in modulare Klassen unter `includes/` refaktoriert.
 - Architektur-Dokumentation mit klaren Klassenverantwortlichkeiten und Ablauf ergaenzt.
+- Konfigurierbares oeffentliches Rate-Limiting fuer anonyme Slot-Suche und Reservierung hinzugefuegt.
 
 ### 1.2.1
 

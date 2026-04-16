@@ -2,7 +2,7 @@
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 1.2.1
+Version: 1.3.0
 
 ## Features
 
@@ -12,6 +12,9 @@ Version: 1.2.1
 - Grundkonfiguration (erforderlich): API-Endpunkt und API-Key
 - Experteneinstellungen (optional): Sync-Intervall, Kalenderliste, woechentliche Verfuegbarkeitsfenster, Autoresponder-Text
 - Kalenderquellen-Modi mit `private`/`official` und `general`/`holiday`
+- Branded HTML-/Text-Mails fuer Reservierung, Stornobestaetigung und interne Benachrichtigungen
+- Theme-aware Mail-Branding: nutzt bei aktivem Restatify-Theme Logo und CI-Farben, sonst Platzhalter-Logo und Standardfarben
+- Oeffentliche Storno-Seite mit Nonce, Rechenaufgabe und API-gestuetzter Termin-Stornierung
 - Autoresponder-E-Mail mit ICS-Anhang
 - Optionale KI-Helper-Funktion fuer Integration mit dem Chat-Overlay-Plugin
 - Optionale Uebergabe von Chat-Ereignissen (bestaetigt/abgebrochen), wenn Multi Chat Overlay installiert ist
@@ -53,7 +56,9 @@ Das Plugin ist in kleine Klassen mit klaren Verantwortlichkeiten aufgeteilt:
 - `includes/class-restatify-booking-assistant-booking-controller.php`
 	AJAX-Buchungsendpunkte: Terminsuche und Reservierung mit Kontaktkanal-Validierung.
 - `includes/class-restatify-booking-assistant-autoresponder.php`
-	Bestaetigungs-E-Mail und ICS-Generierung.
+	Bestaetigungs-, Storno- und interne E-Mails mit HTML/Text-Fallback und ICS-Generierung.
+- `includes/class-restatify-booking-assistant-cancellation-controller.php`
+	Oeffentliche Storno-Seite mit Formular, Captcha, API-Call und Versand der Stornobestaetigung.
 - `includes/class-restatify-booking-assistant-ui.php`
 	Frontend-Rendering/Assets und Rendering der Admin-Einstellungsseite.
 
@@ -68,6 +73,7 @@ Diese Dokumentation beschreibt Zweck, erwartete Payloads und Verhalten, damit ku
 2. `Booking_Controller` validiert Payload und kanalspezifische Kontaktdaten.
 3. `Api_Client` sendet Reservierung an die Booking API.
 4. `Autoresponder` versendet E-Mail + ICS mit kanalbezogenen Kontaktdetails.
+5. `Cancellation_Controller` verarbeitet den Storno-Link und versendet Stornobestaetigungen nach erfolgreichem API-Call.
 
 ### Why this split
 
@@ -85,6 +91,10 @@ Fields:
 
 - Booking autoresponder subject
 - Booking autoresponder body
+- Booking autoresponder HTML body
+- Booking owner notification subject/body
+- Booking cancellation confirmation subject/body
+- Booking owner cancellation subject/body
 
 Uebersetzung unter: Languages > Translations.
 
@@ -116,6 +126,13 @@ Woechentliche Verfuegbarkeitszeilen:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 1.3.0
+
+- Lesbare lokale Zeitdarstellung in den Buchungs- und Stornomails hinzugefuegt.
+- Stornobestaetigung fuer Interessenten und optionale interne Stornobenachrichtigung hinzugefuegt.
+- Branded HTML-Default-Templates mit Footer, Disclaimer, Maschinenhinweis und Umwelthinweis hinzugefuegt.
+- Restatify-Theme Branding fuer Mails (Custom Logo + CI-Farben) mit Fallback auf Platzhalter-Logo und Standardfarben implementiert.
 
 ### 1.2.2
 

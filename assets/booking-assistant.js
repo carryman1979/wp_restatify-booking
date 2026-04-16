@@ -5,6 +5,7 @@
   var weekStartsMonday = /^de(-|$)/i.test(locale);
 
   function initBookingPopup(root) {
+    var strings = restatifyBookingAssistant.strings || {};
     var openBtn = root.querySelector('[data-booking-open]');
     var closeBtn = root.querySelector('[data-booking-close]');
     var cancelBtn = root.querySelector('[data-booking-cancel]');
@@ -42,13 +43,14 @@
       return;
     }
 
+    form.setAttribute('novalidate', 'novalidate');
+
     function stepCount() {
       return wizardSteps ? wizardSteps.length : 0;
     }
 
     function renderNoSlotsStatus() {
       var noSlotsConfig = restatifyBookingAssistant.noSlots || {};
-      var strings = restatifyBookingAssistant.strings || {};
       var chatAvailable = !!noSlotsConfig.chatAvailable;
       var contactEmail = String(noSlotsConfig.contactEmail || '').trim();
 
@@ -76,7 +78,70 @@
       }
     }
 
-    function isStepValid(stepIndex) {
+    function clearValidationFeedback() {
+      statusNode.classList.remove('is-error');
+
+      var invalidFields = form.querySelectorAll('.is-invalid');
+      for (var i = 0; i < invalidFields.length; i += 1) {
+        invalidFields[i].classList.remove('is-invalid');
+        invalidFields[i].removeAttribute('aria-invalid');
+      }
+    }
+
+    function getValidationMessage(field) {
+      var fieldName = String(field && field.name ? field.name : '');
+      var fieldType = String(field && field.type ? field.type : '');
+      var validity = field && field.validity ? field.validity : null;
+
+      if (validity && validity.valueMissing) {
+        if (fieldName === 'name') {
+          return strings.validationNameRequired || strings.validationGeneric || 'Bitte prüfe deine Eingaben.';
+        }
+        if (fieldName === 'email') {
+          return strings.validationEmailRequired || strings.validationGeneric || 'Bitte prüfe deine Eingaben.';
+        }
+        if (fieldName === 'subject') {
+          return strings.validationSubjectRequired || strings.validationGeneric || 'Bitte prüfe deine Eingaben.';
+        }
+        if (fieldName === 'contact_value') {
+          return strings.validationContactRequired || strings.validationGeneric || 'Bitte prüfe deine Eingaben.';
+        }
+      }
+
+      if (validity && validity.typeMismatch) {
+        if (fieldName === 'contact_value' && fieldType === 'email') {
+          return strings.validationContactEmailInvalid || strings.validationGeneric || 'Bitte prüfe deine Eingaben.';
+        }
+        if (fieldName === 'contact_value' && fieldType === 'url') {
+          return strings.validationContactUrlInvalid || strings.validationGeneric || 'Bitte prüfe deine Eingaben.';
+        }
+        if (fieldName === 'email' || fieldType === 'email') {
+          return strings.validationEmailInvalid || strings.validationGeneric || 'Bitte prüfe deine Eingaben.';
+        }
+      }
+
+      return strings.validationGeneric || field.validationMessage || 'Bitte prüfe deine Eingaben.';
+    }
+
+    function showValidationFeedback(field) {
+      if (!field) {
+        return;
+      }
+
+      clearValidationFeedback();
+      field.classList.add('is-invalid');
+      field.setAttribute('aria-invalid', 'true');
+      statusNode.textContent = getValidationMessage(field);
+      statusNode.classList.add('is-error');
+
+      if (typeof field.focus === 'function') {
+        field.focus({ preventScroll: true });
+      }
+    }
+
+    function isStepValid(stepIndex, options) {
+      var announce = !!(options && options.announce);
+
       if (stepIndex === 0) {
         return bookingState.selectedDayKey !== '';
       }
@@ -87,6 +152,9 @@
 
       var current = wizardSteps[stepIndex];
       if (!current) {
+        if (announce) {
+          clearValidationFeedback();
+        }
         return true;
       }
 
@@ -94,12 +162,29 @@
       for (var i = 0; i < requiredFields.length; i += 1) {
         var field = requiredFields[i];
         if (!field.checkValidity()) {
-          field.reportValidity();
+          if (announce) {
+            showValidationFeedback(field);
+          }
           return false;
         }
       }
 
+      if (announce) {
+        clearValidationFeedback();
+      }
+
       return true;
+    }
+
+    function setWizardButtonState(button, disabled) {
+      if (!button) {
+        return;
+      }
+
+      button.disabled = !!disabled;
+      button.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      button.classList.toggle('is-disabled', !!disabled);
+      button.classList.toggle('is-ready', !disabled);
     }
 
     function updateFormWizard() {
@@ -125,12 +210,14 @@
 
       var isFirst = bookingState.currentFormStep === 0;
       var isLast = bookingState.currentFormStep === total - 1;
+      var canAdvance = isStepValid(bookingState.currentFormStep);
 
       if (wizardPrev) {
         wizardPrev.hidden = isFirst;
       }
       if (wizardNext) {
         wizardNext.hidden = isLast;
+        setWizardButtonState(wizardNext, isLast || !canAdvance);
       }
       if (wizardIndicator) {
         wizardIndicator.textContent = String(bookingState.currentFormStep + 1) + '/' + String(total);
@@ -190,7 +277,7 @@
       }
 
       var inputKind = String(selected.getAttribute('data-input-kind') || 'text');
-      var valueLabel = String(selected.getAttribute('data-value-label') || 'Kontaktdaten');
+      var valueLabel = String(selected.getAttribute('data-value-label') || strings.contactValueLabelDefault || 'Contact details');
       var placeholder = String(selected.getAttribute('data-placeholder') || '');
 
       if (inputKind === 'email') {
@@ -216,8 +303,8 @@
         return;
       }
 
-      var moreLabel = String(contactChannelsToggle.getAttribute('data-label-more') || 'Mehr...');
-      var lessLabel = String(contactChannelsToggle.getAttribute('data-label-less') || 'Weniger');
+      var moreLabel = String(contactChannelsToggle.getAttribute('data-label-more') || strings.contactMoreLabel || 'More...');
+      var lessLabel = String(contactChannelsToggle.getAttribute('data-label-less') || strings.contactLessLabel || 'Less');
 
       function update(expanded) {
         contactChannelsNode.classList.toggle('is-expanded', expanded);
@@ -323,6 +410,7 @@
               slotStartInput.value = '';
               renderDateStep();
               renderTimeStep();
+              updateFormWizard();
             };
           }(dayKey));
         }
@@ -340,7 +428,7 @@
       if (!daySlots.length) {
         var empty = document.createElement('p');
         empty.className = 'restatify-booking__times-empty';
-        empty.textContent = restatifyBookingAssistant.strings.pickTime || 'Bitte zuerst ein Datum auswählen.';
+        empty.textContent = strings.pickTime || 'Please select a date first.';
         timeStepNode.appendChild(empty);
         return;
       }
@@ -363,6 +451,7 @@
           bookingState.selectedSlot = slot.start_iso;
           slotStartInput.value = slot.start_iso;
           renderTimeStep();
+          updateFormWizard();
         });
 
         grid.appendChild(button);
@@ -413,8 +502,10 @@
         resetFormWizard();
         form.hidden = false;
         statusNode.textContent = '';
+        statusNode.classList.remove('is-error');
       }).catch(function () {
         statusNode.textContent = restatifyBookingAssistant.strings.error;
+          statusNode.classList.remove('is-error');
         form.hidden = true;
       });
     }
@@ -452,6 +543,7 @@
       bookingState.selectedDayKey = '';
       slotStartInput.value = '';
       form.hidden = true;
+      clearValidationFeedback();
       resetFormWizard();
       setSubmitBusy(false);
     }
@@ -506,6 +598,7 @@
         });
 
         statusNode.textContent = restatifyBookingAssistant.strings.success;
+        statusNode.classList.remove('is-error');
         form.reset();
         setSelectedContactMethod(defaultContactMethod);
         syncContactField();
@@ -518,6 +611,7 @@
       }).catch(function () {
         setSubmitBusy(false);
         statusNode.textContent = restatifyBookingAssistant.strings.error;
+        statusNode.classList.remove('is-error');
       });
     }
 
@@ -606,7 +700,7 @@
 
     if (wizardNext) {
       wizardNext.addEventListener('click', function () {
-        if (!isStepValid(bookingState.currentFormStep)) {
+        if (!isStepValid(bookingState.currentFormStep, { announce: true })) {
           return;
         }
         bookingState.currentFormStep += 1;
@@ -616,10 +710,29 @@
 
     form.addEventListener('submit', function (event) {
       event.preventDefault();
-      if (!isStepValid(bookingState.currentFormStep)) {
+      if (!isStepValid(bookingState.currentFormStep, { announce: true })) {
         return;
       }
       reserveSlot(new FormData(form));
+    });
+
+    form.addEventListener('input', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      if (target.classList.contains('is-invalid')) {
+        target.classList.remove('is-invalid');
+        target.removeAttribute('aria-invalid');
+      }
+
+      if (statusNode.classList.contains('is-error')) {
+        statusNode.textContent = '';
+        statusNode.classList.remove('is-error');
+      }
+
+      updateFormWizard();
     });
 
     var contactButtons = getContactButtons();

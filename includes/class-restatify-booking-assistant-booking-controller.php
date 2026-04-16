@@ -30,9 +30,11 @@ final class Restatify_Booking_Assistant_Booking_Controller {
         $this->verify_nonce();
 
         $options = $this->options_service->get_options();
-        $timezone = sanitize_text_field((string) ($_POST['timezone'] ?? $options['default_timezone']));
-        $duration = max(15, min(180, absint($_POST['duration_minutes'] ?? $options['default_duration_minutes'])));
-        $window_days = max(1, min(60, absint($_POST['window_days'] ?? $options['slot_window_days'])));
+        $timezone = isset($_POST['timezone'])
+            ? sanitize_text_field((string) wp_unslash($_POST['timezone']))
+            : (string) $options['default_timezone'];
+        $duration = max(15, min(180, absint(isset($_POST['duration_minutes']) ? wp_unslash($_POST['duration_minutes']) : $options['default_duration_minutes'])));
+        $window_days = max(1, min(60, absint(isset($_POST['window_days']) ? wp_unslash($_POST['window_days']) : $options['slot_window_days'])));
 
         $start = new DateTimeImmutable('now', new DateTimeZone($timezone));
         $end = $start->modify('+' . $window_days . ' days');
@@ -73,17 +75,23 @@ final class Restatify_Booking_Assistant_Booking_Controller {
             }
         }
 
-        $name = sanitize_text_field((string) ($_POST['name'] ?? ''));
-        $email = sanitize_email((string) ($_POST['email'] ?? ''));
-        $subject = sanitize_text_field((string) ($_POST['subject'] ?? ''));
-        $note = sanitize_textarea_field((string) ($_POST['note'] ?? ''));
-        $slot_start = sanitize_text_field((string) ($_POST['slot_start'] ?? ''));
+        $name = isset($_POST['name']) ? sanitize_text_field((string) wp_unslash($_POST['name'])) : '';
+        $email = isset($_POST['email']) ? sanitize_email((string) wp_unslash($_POST['email'])) : '';
+        $subject = isset($_POST['subject']) ? sanitize_text_field((string) wp_unslash($_POST['subject'])) : '';
+        $note = isset($_POST['note']) ? sanitize_textarea_field((string) wp_unslash($_POST['note'])) : '';
+        $slot_start = isset($_POST['slot_start']) ? sanitize_text_field((string) wp_unslash($_POST['slot_start'])) : '';
         $default_method = (string) ($contact_channels[0]['key'] ?? 'phone');
-        $contact_method = sanitize_key((string) ($_POST['contact_method'] ?? $default_method));
-        $contact_value_raw = sanitize_text_field((string) ($_POST['contact_value'] ?? ''));
+        $contact_method = isset($_POST['contact_method'])
+            ? sanitize_key((string) wp_unslash($_POST['contact_method']))
+            : $default_method;
+        $contact_value_raw = isset($_POST['contact_value']) ? sanitize_text_field((string) wp_unslash($_POST['contact_value'])) : '';
 
         if ($name === '' || $email === '' || $slot_start === '' || $subject === '') {
             wp_send_json_error(['message' => __('Please complete all required fields.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)], 400);
+        }
+
+        if (!is_email($email)) {
+            wp_send_json_error(['message' => __('Please provide a valid email address.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)], 400);
         }
 
         if (!array_key_exists($contact_method, $contact_map)) {
@@ -151,7 +159,12 @@ final class Restatify_Booking_Assistant_Booking_Controller {
             wp_send_json_error(['message' => $response->get_error_message()], 500);
         }
 
-        $this->autoresponder->send_confirmation($response, $name, $email, $subject, $note_with_contact, $contact_label, $contact_value, $contact_detail);
+        $cancel_token = sanitize_text_field((string) ($response['cancel_token'] ?? ''));
+        $cancellation_url = $cancel_token !== ''
+            ? add_query_arg([Restatify_Booking_Assistant_Constants::CANCEL_QUERY_ARG => $cancel_token], home_url('/'))
+            : '';
+
+        $this->autoresponder->send_confirmation($response, $name, $email, $subject, $note_with_contact, $contact_label, $contact_value, $contact_detail, $cancellation_url);
 
         wp_send_json_success([
             'reference' => sanitize_text_field((string) ($response['reference'] ?? '')),
@@ -161,7 +174,7 @@ final class Restatify_Booking_Assistant_Booking_Controller {
     }
 
     private function verify_nonce(): void {
-        $nonce = sanitize_text_field((string) ($_POST['nonce'] ?? ''));
+        $nonce = isset($_POST['nonce']) ? sanitize_text_field((string) wp_unslash($_POST['nonce'])) : '';
         if (!wp_verify_nonce($nonce, Restatify_Booking_Assistant_Constants::NONCE_ACTION)) {
             wp_send_json_error(['message' => __('Invalid request token.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)], 403);
         }

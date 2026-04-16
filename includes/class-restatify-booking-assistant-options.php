@@ -46,6 +46,76 @@ final class Restatify_Booking_Assistant_Options {
             Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
             true
         );
+
+        pll_register_string(
+            'Booking autoresponder HTML body',
+            (string) ($options['autoresponder_html_body'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            true
+        );
+
+        pll_register_string(
+            'Booking owner notification subject',
+            (string) ($options['owner_notification_subject'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            false
+        );
+
+        pll_register_string(
+            'Booking owner notification text body',
+            (string) ($options['owner_notification_body'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            true
+        );
+
+        pll_register_string(
+            'Booking owner notification HTML body',
+            (string) ($options['owner_notification_html_body'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            true
+        );
+
+        pll_register_string(
+            'Booking cancellation confirmation subject',
+            (string) ($options['cancellation_confirmation_subject'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            false
+        );
+
+        pll_register_string(
+            'Booking cancellation confirmation text body',
+            (string) ($options['cancellation_confirmation_body'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            true
+        );
+
+        pll_register_string(
+            'Booking cancellation confirmation HTML body',
+            (string) ($options['cancellation_confirmation_html_body'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            true
+        );
+
+        pll_register_string(
+            'Booking owner cancellation subject',
+            (string) ($options['owner_cancellation_subject'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            false
+        );
+
+        pll_register_string(
+            'Booking owner cancellation text body',
+            (string) ($options['owner_cancellation_body'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            true
+        );
+
+        pll_register_string(
+            'Booking owner cancellation HTML body',
+            (string) ($options['owner_cancellation_html_body'] ?? ''),
+            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+            true
+        );
     }
 
     /**
@@ -60,9 +130,20 @@ final class Restatify_Booking_Assistant_Options {
         }
 
         $options = wp_parse_args($saved, $this->get_default_options());
+        $options = $this->apply_dynamic_mail_defaults($saved, $options);
 
         $options['autoresponder_subject'] = $this->translate_option_string((string) ($options['autoresponder_subject'] ?? ''));
         $options['autoresponder_body'] = $this->translate_option_string((string) ($options['autoresponder_body'] ?? ''));
+        $options['autoresponder_html_body'] = $this->translate_option_string((string) ($options['autoresponder_html_body'] ?? ''));
+        $options['owner_notification_subject'] = $this->translate_option_string((string) ($options['owner_notification_subject'] ?? ''));
+        $options['owner_notification_body'] = $this->translate_option_string((string) ($options['owner_notification_body'] ?? ''));
+        $options['owner_notification_html_body'] = $this->translate_option_string((string) ($options['owner_notification_html_body'] ?? ''));
+        $options['cancellation_confirmation_subject'] = $this->translate_option_string((string) ($options['cancellation_confirmation_subject'] ?? ''));
+        $options['cancellation_confirmation_body'] = $this->translate_option_string((string) ($options['cancellation_confirmation_body'] ?? ''));
+        $options['cancellation_confirmation_html_body'] = $this->translate_option_string((string) ($options['cancellation_confirmation_html_body'] ?? ''));
+        $options['owner_cancellation_subject'] = $this->translate_option_string((string) ($options['owner_cancellation_subject'] ?? ''));
+        $options['owner_cancellation_body'] = $this->translate_option_string((string) ($options['owner_cancellation_body'] ?? ''));
+        $options['owner_cancellation_html_body'] = $this->translate_option_string((string) ($options['owner_cancellation_html_body'] ?? ''));
 
         if (!is_array($options['contact_channels'] ?? null) || count((array) $options['contact_channels']) === 0) {
             $options['contact_channels'] = $this->parse_contact_channels_raw((string) ($options['contact_channels_raw'] ?? ''));
@@ -81,8 +162,15 @@ final class Restatify_Booking_Assistant_Options {
         $defaults = $this->get_default_options();
         $input = is_array($input) ? $input : [];
 
-        $calendar_sources_raw = sanitize_textarea_field((string) ($input['api_calendar_sources_raw'] ?? $defaults['api_calendar_sources_raw']));
-        $calendar_sources = $this->parse_calendar_sources_raw($calendar_sources_raw);
+        $calendar_source_rows = $this->normalize_calendar_source_rows($input['api_calendar_sources_rows'] ?? []);
+        if (count($calendar_source_rows) > 0) {
+            $calendar_sources = $calendar_source_rows;
+            $calendar_sources_raw = $this->calendar_sources_to_raw($calendar_sources);
+        } else {
+            $calendar_sources_raw = sanitize_textarea_field((string) ($input['api_calendar_sources_raw'] ?? $defaults['api_calendar_sources_raw']));
+            $calendar_sources = $this->parse_calendar_sources_raw($calendar_sources_raw);
+        }
+
         $availability_raw = sanitize_textarea_field((string) ($input['api_availability_raw'] ?? $defaults['api_availability_raw']));
         $availability_rules = $this->parse_availability_raw($availability_raw);
         $contact_channels_raw = sanitize_textarea_field((string) ($input['contact_channels_raw'] ?? $defaults['contact_channels_raw']));
@@ -112,9 +200,87 @@ final class Restatify_Booking_Assistant_Options {
             'contact_prominent_count' => max(1, min(6, absint($input['contact_prominent_count'] ?? $defaults['contact_prominent_count']))),
             'contact_more_label' => sanitize_text_field((string) ($input['contact_more_label'] ?? $defaults['contact_more_label'])),
             'contact_less_label' => sanitize_text_field((string) ($input['contact_less_label'] ?? $defaults['contact_less_label'])),
+            'autoresponder_enabled' => !empty($input['autoresponder_enabled']),
+            'autoresponder_html_enabled' => !empty($input['autoresponder_html_enabled']),
             'autoresponder_subject' => sanitize_text_field((string) ($input['autoresponder_subject'] ?? $defaults['autoresponder_subject'])),
             'autoresponder_body' => sanitize_textarea_field((string) ($input['autoresponder_body'] ?? $defaults['autoresponder_body'])),
+            'autoresponder_html_body' => wp_kses_post((string) ($input['autoresponder_html_body'] ?? $defaults['autoresponder_html_body'])),
+            'owner_notification_enabled' => !empty($input['owner_notification_enabled']),
+            'owner_notification_html_enabled' => !empty($input['owner_notification_html_enabled']),
+            'owner_notification_recipients' => sanitize_textarea_field((string) ($input['owner_notification_recipients'] ?? $defaults['owner_notification_recipients'])),
+            'owner_notification_subject' => sanitize_text_field((string) ($input['owner_notification_subject'] ?? $defaults['owner_notification_subject'])),
+            'owner_notification_body' => sanitize_textarea_field((string) ($input['owner_notification_body'] ?? $defaults['owner_notification_body'])),
+            'owner_notification_html_body' => wp_kses_post((string) ($input['owner_notification_html_body'] ?? $defaults['owner_notification_html_body'])),
+            'cancellation_confirmation_enabled' => !empty($input['cancellation_confirmation_enabled']),
+            'cancellation_confirmation_html_enabled' => !empty($input['cancellation_confirmation_html_enabled']),
+            'cancellation_confirmation_subject' => sanitize_text_field((string) ($input['cancellation_confirmation_subject'] ?? $defaults['cancellation_confirmation_subject'])),
+            'cancellation_confirmation_body' => sanitize_textarea_field((string) ($input['cancellation_confirmation_body'] ?? $defaults['cancellation_confirmation_body'])),
+            'cancellation_confirmation_html_body' => wp_kses_post((string) ($input['cancellation_confirmation_html_body'] ?? $defaults['cancellation_confirmation_html_body'])),
+            'owner_cancellation_enabled' => !empty($input['owner_cancellation_enabled']),
+            'owner_cancellation_html_enabled' => !empty($input['owner_cancellation_html_enabled']),
+            'owner_cancellation_subject' => sanitize_text_field((string) ($input['owner_cancellation_subject'] ?? $defaults['owner_cancellation_subject'])),
+            'owner_cancellation_body' => sanitize_textarea_field((string) ($input['owner_cancellation_body'] ?? $defaults['owner_cancellation_body'])),
+            'owner_cancellation_html_body' => wp_kses_post((string) ($input['owner_cancellation_html_body'] ?? $defaults['owner_cancellation_html_body'])),
         ];
+    }
+
+    /**
+     * @param mixed $rows
+     * @return array<int,array{calendar_id:string,label:string,privacy_mode:string,calendar_type:string}>
+     */
+    private function normalize_calendar_source_rows($rows): array {
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $sources = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $calendar_id = sanitize_text_field((string) ($row['calendar_id'] ?? ''));
+            if ($calendar_id === '') {
+                continue;
+            }
+
+            $label = sanitize_text_field((string) ($row['label'] ?? $calendar_id));
+            $privacy_mode = strtolower(sanitize_key((string) ($row['privacy_mode'] ?? 'private')));
+            if (!in_array($privacy_mode, ['private', 'official'], true)) {
+                $privacy_mode = 'private';
+            }
+
+            $calendar_type = strtolower(sanitize_key((string) ($row['calendar_type'] ?? 'general')));
+            if (!in_array($calendar_type, ['general', 'holiday'], true)) {
+                $calendar_type = 'general';
+            }
+
+            $sources[] = [
+                'calendar_id' => $calendar_id,
+                'label' => $label,
+                'privacy_mode' => $privacy_mode,
+                'calendar_type' => $calendar_type,
+            ];
+        }
+
+        return $sources;
+    }
+
+    /**
+     * @param array<int,array{calendar_id:string,label:string,privacy_mode:string,calendar_type:string}> $sources
+     */
+    private function calendar_sources_to_raw(array $sources): string {
+        $lines = [];
+        foreach ($sources as $source) {
+            $lines[] = implode('|', [
+                (string) ($source['calendar_id'] ?? ''),
+                (string) ($source['label'] ?? ''),
+                (string) ($source['privacy_mode'] ?? 'private'),
+                (string) ($source['calendar_type'] ?? 'general'),
+            ]);
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
@@ -144,6 +310,8 @@ final class Restatify_Booking_Assistant_Options {
      * @return array<string,mixed>
      */
     public function get_default_options(): array {
+        $mail_branding = $this->get_mail_branding_context();
+
         return [
             'api_base_url' => 'https://booking-api.example.com',
             'api_key' => '',
@@ -168,10 +336,277 @@ final class Restatify_Booking_Assistant_Options {
             'contact_prominent_count' => 3,
             'contact_more_label' => __('Mehr...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             'contact_less_label' => __('Weniger', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'autoresponder_enabled' => true,
+            'autoresponder_html_enabled' => true,
             'autoresponder_subject' => __('Deine Restatify Terminreservierung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'autoresponder_body' => "Hallo {name},\n\nvielen Dank für deine Reservierung.\n\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nReferenz: {reference}\n\nViele Grüße\nRestatify",
+                        'autoresponder_body' => $this->get_default_autoresponder_text_body(),
+                        'autoresponder_html_body' => $this->get_default_autoresponder_html_body($mail_branding),
+            'owner_notification_enabled' => false,
+            'owner_notification_html_enabled' => true,
+            'owner_notification_recipients' => sanitize_email((string) get_option('admin_email', '')),
+            'owner_notification_subject' => __('Neuer Restatify Termin {reference}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                        'owner_notification_body' => $this->get_default_owner_notification_text_body(),
+                        'owner_notification_html_body' => $this->get_default_owner_notification_html_body($mail_branding),
+                        'cancellation_confirmation_enabled' => true,
+                        'cancellation_confirmation_html_enabled' => true,
+                        'cancellation_confirmation_subject' => __('Deine Restatify Termin-Stornierung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                        'cancellation_confirmation_body' => $this->get_default_cancellation_confirmation_text_body(),
+                        'cancellation_confirmation_html_body' => $this->get_default_cancellation_confirmation_html_body($mail_branding),
+                        'owner_cancellation_enabled' => false,
+                        'owner_cancellation_html_enabled' => true,
+                        'owner_cancellation_subject' => __('Termin storniert: {reference}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                        'owner_cancellation_body' => $this->get_default_owner_cancellation_text_body(),
+                        'owner_cancellation_html_body' => $this->get_default_owner_cancellation_html_body($mail_branding),
         ];
     }
+
+        /**
+         * @param array<string,mixed> $saved
+         * @param array<string,mixed> $options
+         * @return array<string,mixed>
+         */
+        private function apply_dynamic_mail_defaults(array $saved, array $options): array {
+                $dynamic_defaults = $this->get_default_options();
+                $legacy_defaults = $this->get_legacy_mail_defaults();
+
+                foreach (['autoresponder_enabled', 'autoresponder_html_enabled', 'owner_notification_enabled', 'owner_notification_html_enabled', 'cancellation_confirmation_enabled', 'cancellation_confirmation_html_enabled', 'owner_cancellation_enabled', 'owner_cancellation_html_enabled'] as $bool_key) {
+                        if (!array_key_exists($bool_key, $saved)) {
+                                $options[$bool_key] = $dynamic_defaults[$bool_key];
+                        }
+                }
+
+                foreach (['autoresponder_subject', 'autoresponder_body', 'autoresponder_html_body', 'owner_notification_subject', 'owner_notification_body', 'owner_notification_html_body', 'cancellation_confirmation_subject', 'cancellation_confirmation_body', 'cancellation_confirmation_html_body', 'owner_cancellation_subject', 'owner_cancellation_body', 'owner_cancellation_html_body'] as $key) {
+                        if (!array_key_exists($key, $saved)) {
+                                $options[$key] = $dynamic_defaults[$key];
+                                continue;
+                        }
+
+                        $current_value = (string) ($saved[$key] ?? '');
+                        $legacy_value = (string) ($legacy_defaults[$key] ?? '');
+                        if (trim($current_value) === '' || ($legacy_value !== '' && $current_value === $legacy_value)) {
+                                $options[$key] = $dynamic_defaults[$key];
+                        }
+                }
+
+                return $options;
+        }
+
+        /**
+         * @return array<string,string>
+         */
+        private function get_legacy_mail_defaults(): array {
+                return [
+                        'autoresponder_subject' => __('Deine Restatify Terminreservierung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                        'autoresponder_body' => "Hallo {name},\n\nvielen Dank für deine Reservierung.\n\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nReferenz: {reference}\nTermin stornieren: {cancellation_url}\n\nViele Grüße\nRestatify",
+                        'autoresponder_html_body' => '<p>Hallo {name},</p><p>vielen Dank für deine Reservierung.</p><ul><li><strong>Thema:</strong> {subject}</li><li><strong>Start:</strong> {start}</li><li><strong>Ende:</strong> {end}</li><li><strong>Zeitzone:</strong> {timezone}</li><li><strong>Kontaktkanal:</strong> {contact_method}</li><li><strong>Kontakt:</strong> {contact_detail}</li><li><strong>Referenz:</strong> {reference}</li></ul><p><a href="{cancellation_url}">Termin stornieren</a></p><p>Viele Grüße<br>Restatify</p>',
+                        'owner_notification_subject' => __('Neuer Restatify Termin {reference}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                        'owner_notification_body' => "Ein neuer Termin wurde gebucht.\n\nName: {name}\nE-Mail: {email}\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nNachricht: {note}\nReferenz: {reference}\nTermin stornieren: {cancellation_url}",
+                        'owner_notification_html_body' => '<p>Ein neuer Termin wurde gebucht.</p><ul><li><strong>Name:</strong> {name}</li><li><strong>E-Mail:</strong> {email}</li><li><strong>Thema:</strong> {subject}</li><li><strong>Start:</strong> {start}</li><li><strong>Ende:</strong> {end}</li><li><strong>Zeitzone:</strong> {timezone}</li><li><strong>Kontaktkanal:</strong> {contact_method}</li><li><strong>Kontakt:</strong> {contact_detail}</li><li><strong>Referenz:</strong> {reference}</li></ul><p><strong>Nachricht:</strong><br>{note}</p><p><a href="{cancellation_url}">Termin stornieren</a></p>',
+                        'owner_cancellation_subject' => __('Termin storniert: {reference}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                        'owner_cancellation_body' => "Ein Termin wurde storniert.\n\nName: {name}\nE-Mail: {email}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nReferenz: {reference}\nStornogrund: {cancellation_reason}\nNachricht: {cancellation_message}",
+                        'owner_cancellation_html_body' => '<p>Ein Termin wurde storniert.</p><ul><li><strong>Name:</strong> {name}</li><li><strong>E-Mail:</strong> {email}</li><li><strong>Start:</strong> {start}</li><li><strong>Ende:</strong> {end}</li><li><strong>Zeitzone:</strong> {timezone}</li><li><strong>Referenz:</strong> {reference}</li><li><strong>Stornogrund:</strong> {cancellation_reason}</li></ul><p><strong>Nachricht:</strong><br>{cancellation_message}</p>',
+                ];
+        }
+
+        private function get_default_autoresponder_text_body(): string {
+                return "Hallo {name},\n\ndeine Reservierung wurde erfolgreich eingetragen.\n\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nReferenz: {reference}\nTermin stornieren: {cancellation_url}\n\nBitte prüfe die Angaben und bewahre diese Nachricht bis zum Termin auf.\n\nViele Grüße\n{site_name}\n\nDisclaimer: Diese Nachricht enthält organisatorische Informationen zu deiner Terminreservierung. Bitte sende keine sensiblen Daten per E-Mail.\nDiese E-Mail wurde maschinell erstellt. Antworten auf diese Nachricht werden möglicherweise nicht gelesen.\nSchütze die Umwelt, indem du diese E-Mail nicht ausdruckst.";
+        }
+
+        private function get_default_owner_notification_text_body(): string {
+                return "Ein neuer Termin wurde gebucht.\n\nName: {name}\nE-Mail: {email}\nThema: {subject}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nKontaktkanal: {contact_method}\nKontakt: {contact_detail}\nNachricht: {note}\nReferenz: {reference}\nTermin stornieren: {cancellation_url}\n\nHinweis: Diese Benachrichtigung wurde automatisch durch Restatify erzeugt.\nDisclaimer: Bitte prüfe die Angaben vor einer manuellen Weiterverarbeitung.\nDiese E-Mail wurde maschinell erstellt.\nSchütze die Umwelt, indem du diese E-Mail nicht ausdruckst.";
+        }
+
+        private function get_default_cancellation_confirmation_text_body(): string {
+                return "Hallo {name},\n\ndein Termin wurde erfolgreich storniert.\n\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nReferenz: {reference}\nStornogrund: {cancellation_reason}\nNachricht: {cancellation_message}\n\nFalls du einen neuen Termin vereinbaren möchtest, nutze bitte erneut das Buchungstool auf unserer Website.\n\nViele Grüße\n{site_name}\n\nDisclaimer: Diese Nachricht bestätigt ausschließlich die Stornierung deines Termins. Bitte sende keine sensiblen Daten per E-Mail.\nDiese E-Mail wurde maschinell erstellt. Antworten auf diese Nachricht werden möglicherweise nicht gelesen.\nSchütze die Umwelt, indem du diese E-Mail nicht ausdruckst.";
+        }
+
+        private function get_default_owner_cancellation_text_body(): string {
+            return "Ein Termin wurde storniert.\n\nName: {name}\nE-Mail: {email}\nStart: {start}\nEnde: {end}\nZeitzone: {timezone}\nReferenz: {reference}\nStornogrund: {cancellation_reason}\nNachricht: {cancellation_message}\n\nHinweis: Diese Benachrichtigung wurde automatisch durch Restatify erzeugt.\nDisclaimer: Bitte prüfe die Angaben vor einer manuellen Weiterverarbeitung.\nDiese E-Mail wurde maschinell erstellt.\nSchütze die Umwelt, indem du diese E-Mail nicht ausdruckst.";
+        }
+
+        /**
+         * @param array<string,string> $branding
+         */
+        private function get_default_autoresponder_html_body(array $branding): string {
+                $content = '<p style="margin:0 0 16px;">Hallo {name},</p><p style="margin:0 0 16px;">deine Reservierung wurde erfolgreich eingetragen. Nachfolgend findest du die wichtigsten Informationen.</p><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;"><tr><td style="padding:0 0 10px;"><strong>Thema:</strong> {subject}</td></tr><tr><td style="padding:0 0 10px;"><strong>Start:</strong> {start}</td></tr><tr><td style="padding:0 0 10px;"><strong>Ende:</strong> {end}</td></tr><tr><td style="padding:0 0 10px;"><strong>Zeitzone:</strong> {timezone}</td></tr><tr><td style="padding:0 0 10px;"><strong>Kontaktkanal:</strong> {contact_method}</td></tr><tr><td style="padding:0 0 10px;"><strong>Kontakt:</strong> {contact_detail}</td></tr><tr><td style="padding:0 0 10px;"><strong>Referenz:</strong> {reference}</td></tr></table><p style="margin:24px 0 0;"><a href="{cancellation_url}" style="display:inline-block;background:' . $branding['primary_color'] . ';color:' . $branding['contrast_color'] . ';text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:700;">Termin stornieren</a></p>';
+                return $this->build_default_html_mail($branding, 'Termin erfolgreich reserviert', 'Deine Reservierungsbestätigung', $content);
+        }
+
+        /**
+         * @param array<string,string> $branding
+         */
+        private function get_default_owner_notification_html_body(array $branding): string {
+                $content = '<p style="margin:0 0 16px;">Ein neuer Termin wurde gebucht.</p><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;"><tr><td style="padding:0 0 10px;"><strong>Name:</strong> {name}</td></tr><tr><td style="padding:0 0 10px;"><strong>E-Mail:</strong> {email}</td></tr><tr><td style="padding:0 0 10px;"><strong>Thema:</strong> {subject}</td></tr><tr><td style="padding:0 0 10px;"><strong>Start:</strong> {start}</td></tr><tr><td style="padding:0 0 10px;"><strong>Ende:</strong> {end}</td></tr><tr><td style="padding:0 0 10px;"><strong>Zeitzone:</strong> {timezone}</td></tr><tr><td style="padding:0 0 10px;"><strong>Kontaktkanal:</strong> {contact_method}</td></tr><tr><td style="padding:0 0 10px;"><strong>Kontakt:</strong> {contact_detail}</td></tr><tr><td style="padding:0 0 10px;"><strong>Referenz:</strong> {reference}</td></tr><tr><td style="padding:12px 0 0;"><strong>Nachricht:</strong><br>{note}</td></tr></table><p style="margin:24px 0 0;"><a href="{cancellation_url}" style="display:inline-block;background:' . $branding['secondary_color'] . ';color:' . $branding['contrast_color'] . ';text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:700;">Stornolink öffnen</a></p>';
+                return $this->build_default_html_mail($branding, 'Neuer Termin', 'Interne Terminbenachrichtigung', $content);
+        }
+
+        /**
+         * @param array<string,string> $branding
+         */
+        private function get_default_cancellation_confirmation_html_body(array $branding): string {
+                $content = '<p style="margin:0 0 16px;">Hallo {name},</p><p style="margin:0 0 16px;">dein Termin wurde erfolgreich storniert.</p><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;"><tr><td style="padding:0 0 10px;"><strong>Start:</strong> {start}</td></tr><tr><td style="padding:0 0 10px;"><strong>Ende:</strong> {end}</td></tr><tr><td style="padding:0 0 10px;"><strong>Zeitzone:</strong> {timezone}</td></tr><tr><td style="padding:0 0 10px;"><strong>Referenz:</strong> {reference}</td></tr><tr><td style="padding:0 0 10px;"><strong>Stornogrund:</strong> {cancellation_reason}</td></tr><tr><td style="padding:0;"><strong>Nachricht:</strong><br>{cancellation_message}</td></tr></table><p style="margin:20px 0 0;">Wenn du einen neuen Termin vereinbaren möchtest, nutze bitte erneut das Buchungstool auf unserer Website.</p>';
+                return $this->build_default_html_mail($branding, 'Termin storniert', 'Deine Stornobestätigung', $content);
+        }
+
+        /**
+         * @param array<string,string> $branding
+         */
+        private function get_default_owner_cancellation_html_body(array $branding): string {
+            $content = '<p style="margin:0 0 16px;">Ein Termin wurde storniert.</p><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;"><tr><td style="padding:0 0 10px;"><strong>Name:</strong> {name}</td></tr><tr><td style="padding:0 0 10px;"><strong>E-Mail:</strong> {email}</td></tr><tr><td style="padding:0 0 10px;"><strong>Start:</strong> {start}</td></tr><tr><td style="padding:0 0 10px;"><strong>Ende:</strong> {end}</td></tr><tr><td style="padding:0 0 10px;"><strong>Zeitzone:</strong> {timezone}</td></tr><tr><td style="padding:0 0 10px;"><strong>Referenz:</strong> {reference}</td></tr><tr><td style="padding:0 0 10px;"><strong>Stornogrund:</strong> {cancellation_reason}</td></tr><tr><td style="padding:0;"><strong>Nachricht:</strong><br>{cancellation_message}</td></tr></table>';
+            return $this->build_default_html_mail($branding, 'Termin storniert', 'Interne Stornobenachrichtigung', $content);
+        }
+
+        /**
+         * @param array<string,string> $branding
+         */
+        private function build_default_html_mail(array $branding, string $eyebrow, string $headline, string $content): string {
+                $logo_url = esc_url($branding['logo_url']);
+                $site_name = esc_html($branding['site_name']);
+                $home_url = esc_url($branding['home_url']);
+                $primary_color = esc_attr($branding['primary_color']);
+                $secondary_color = esc_attr($branding['secondary_color']);
+                $background_color = esc_attr($branding['background_color']);
+                $surface_color = esc_attr($branding['surface_color']);
+                $text_color = esc_attr($branding['text_color']);
+                $muted_color = esc_attr($branding['muted_color']);
+                $contrast_color = esc_attr($branding['contrast_color']);
+
+                return <<<HTML
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0;padding:0;background:{$background_color};font-family:Arial,sans-serif;color:{$text_color};">
+    <tr>
+        <td align="center" style="padding:32px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:680px;border-collapse:collapse;background:{$surface_color};border:1px solid rgba(11,18,33,0.08);border-radius:24px;overflow:hidden;box-shadow:0 18px 48px rgba(11,18,33,0.08);">
+                <tr>
+                    <td style="padding:28px 32px;background:linear-gradient(135deg, {$primary_color} 0%, {$secondary_color} 100%);color:{$contrast_color};">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                            <tr>
+                                <td align="left" style="vertical-align:middle;">
+                                    <img src="{$logo_url}" alt="{$site_name}" style="display:block;max-width:220px;width:auto;max-height:56px;height:auto;border:0;">
+                                </td>
+                                <td align="right" style="vertical-align:middle;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;opacity:0.95;">
+                                    {$eyebrow}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:32px;">
+                        <h1 style="margin:0 0 20px;font-size:28px;line-height:1.2;color:{$text_color};">{$headline}</h1>
+                        <div style="font-size:16px;line-height:1.65;color:{$text_color};">{$content}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:0 32px 32px;">
+                        <div style="height:1px;background:linear-gradient(90deg, {$primary_color} 0%, {$secondary_color} 100%);"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:0 32px 32px;font-size:13px;line-height:1.6;color:{$muted_color};">
+                        <p style="margin:0 0 10px;"><strong>Disclaimer:</strong> Diese Nachricht enthält organisatorische Informationen zu deinem Termin. Bitte sende keine sensiblen Daten per E-Mail.</p>
+                        <p style="margin:0 0 10px;">Diese E-Mail wurde maschinell erstellt. Antworten auf diese Nachricht werden möglicherweise nicht gelesen.</p>
+                        <p style="margin:0 0 10px;">Schütze die Umwelt, indem du diese E-Mail nicht ausdruckst.</p>
+                        <p style="margin:0;">{$site_name} · <a href="{$home_url}" style="color:{$primary_color};text-decoration:none;">{$home_url}</a></p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+HTML;
+        }
+
+        /**
+         * @return array<string,string>
+         */
+        private function get_mail_branding_context(): array {
+                $site_name = wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES);
+                $branding = [
+                        'site_name' => $site_name !== '' ? $site_name : 'Restatify',
+                        'home_url' => home_url('/'),
+                        'logo_url' => $this->get_placeholder_logo_url(),
+                        'primary_color' => '#2563eb',
+                        'secondary_color' => '#0f766e',
+                        'background_color' => '#eef4ff',
+                        'surface_color' => '#ffffff',
+                        'text_color' => '#0f172a',
+                        'muted_color' => '#52607a',
+                        'contrast_color' => '#ffffff',
+                ];
+
+                if (!$this->is_restatify_theme_active()) {
+                        return $branding;
+                }
+
+                $branding['logo_url'] = $this->get_restatify_theme_logo_url();
+                $palette = $this->get_restatify_theme_palette();
+                $branding['primary_color'] = $palette['primary'] ?? '#ff6b00';
+                $branding['secondary_color'] = $palette['secondary'] ?? '#00c2ff';
+                $branding['background_color'] = $palette['background'] ?? '#f8fafc';
+                $branding['text_color'] = $palette['text'] ?? '#0b1221';
+                $branding['muted_color'] = '#5b6577';
+
+                return $branding;
+        }
+
+        private function is_restatify_theme_active(): bool {
+                $theme = wp_get_theme();
+                if (!$theme->exists()) {
+                        return false;
+                }
+
+                return in_array('wp_restatify-base-theme', [$theme->get_stylesheet(), $theme->get_template()], true);
+        }
+
+        private function get_restatify_theme_logo_url(): string {
+                $custom_logo_id = (int) get_theme_mod('custom_logo');
+                if ($custom_logo_id > 0) {
+                        $logo_url = wp_get_attachment_image_url($custom_logo_id, 'full');
+                        if (is_string($logo_url) && $logo_url !== '') {
+                                return $logo_url;
+                        }
+                }
+
+                return $this->get_placeholder_logo_url();
+        }
+
+        /**
+         * @return array<string,string>
+         */
+        private function get_restatify_theme_palette(): array {
+                $palette = [];
+                $theme_json_path = get_template_directory() . '/theme.json';
+                if (!file_exists($theme_json_path)) {
+                        return $palette;
+                }
+
+                $content = file_get_contents($theme_json_path);
+                if (!is_string($content) || $content === '') {
+                        return $palette;
+                }
+
+                $decoded = json_decode($content, true);
+                $items = is_array($decoded['settings']['color']['palette'] ?? null) ? $decoded['settings']['color']['palette'] : [];
+                foreach ($items as $item) {
+                        if (!is_array($item)) {
+                                continue;
+                        }
+
+                        $slug = sanitize_key((string) ($item['slug'] ?? ''));
+                        $color = sanitize_hex_color((string) ($item['color'] ?? ''));
+                        if ($slug === '' || $color === null) {
+                                continue;
+                        }
+
+                        $palette[$slug] = $color;
+                }
+
+                return $palette;
+        }
+
+        private function get_placeholder_logo_url(): string {
+            return plugins_url('assets/mail-logo-placeholder.svg', dirname(__DIR__) . '/wp_restatify-booking-assistant.php');
+        }
 
     /**
      * @return array<int,array{weekday:int,windows:array<int,array{start:string,end:string}>}>
@@ -359,12 +794,30 @@ final class Restatify_Booking_Assistant_Options {
     }
 
     private function get_default_contact_channels_raw(): string {
-        return "phone|Telefon|tel|+49...|Telefonnummer|Telefon: {value}\n"
-            . "whatsapp|WhatsApp|tel|+49...|Handynummer|WhatsApp: {value}\n"
-            . "teams|Microsoft Teams|email|name@example.com|E-Mail-Adresse|Teams Kontakt: {value}\n"
-            . "zoom|Zoom|email|name@example.com|E-Mail-Adresse|Zoom Kontakt: {value}\n"
-            . "google_meet|Google Meet|email|name@example.com|E-Mail-Adresse|Google Meet Kontakt: {value}\n"
-            . "signal|Signal|tel|+49...|Handynummer|Signal: {value}";
+        return 'phone|'
+            . __('Telefon', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . '|tel|+49...|'
+            . __('Telefonnummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . '|'
+            . __('Telefon: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . "\nwhatsapp|WhatsApp|tel|+49...|"
+            . __('Handynummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . '|WhatsApp: {value}'
+            . "\nteams|Microsoft Teams|email|name@example.com|"
+            . __('E-Mail-Adresse', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . '|'
+            . __('Teams Kontakt: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . "\nzoom|Zoom|email|name@example.com|"
+            . __('E-Mail-Adresse', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . '|'
+            . __('Zoom Kontakt: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . "\ngoogle_meet|Google Meet|email|name@example.com|"
+            . __('E-Mail-Adresse', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . '|'
+            . __('Google Meet Kontakt: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . "\nsignal|Signal|tel|+49...|"
+            . __('Handynummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            . '|Signal: {value}';
     }
 
     private function translate_option_string(string $value): string {

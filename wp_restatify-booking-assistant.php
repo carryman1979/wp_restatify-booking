@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 1.2.2
+ * Version: 1.3.0
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -20,6 +20,7 @@ require_once __DIR__ . '/includes/class-restatify-booking-assistant-constants.ph
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-options.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-api-client.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-autoresponder.php';
+require_once __DIR__ . '/includes/class-restatify-booking-assistant-cancellation-controller.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-ui.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-booking-controller.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-plugin.php';

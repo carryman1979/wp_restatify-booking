@@ -12,6 +12,7 @@ final class Restatify_Booking_Assistant_Plugin {
     private Restatify_Booking_Assistant_Options $options_service;
     private Restatify_Booking_Assistant_Api_Client $api_client;
     private Restatify_Booking_Assistant_Autoresponder $autoresponder;
+    private Restatify_Booking_Assistant_Cancellation_Controller $cancellation_controller;
     private Restatify_Booking_Assistant_UI $ui;
     private Restatify_Booking_Assistant_Booking_Controller $booking_controller;
 
@@ -20,6 +21,7 @@ final class Restatify_Booking_Assistant_Plugin {
         $this->options_service = new Restatify_Booking_Assistant_Options();
         $this->api_client = new Restatify_Booking_Assistant_Api_Client($this->options_service);
         $this->autoresponder = new Restatify_Booking_Assistant_Autoresponder($this->options_service);
+        $this->cancellation_controller = new Restatify_Booking_Assistant_Cancellation_Controller($this->api_client, $this->autoresponder);
         $this->ui = new Restatify_Booking_Assistant_UI($plugin_file, $this->options_service);
         $this->booking_controller = new Restatify_Booking_Assistant_Booking_Controller(
             $this->options_service,
@@ -42,6 +44,7 @@ final class Restatify_Booking_Assistant_Plugin {
         add_action('admin_notices', [$this, 'render_admin_notice']);
         add_action('wp_enqueue_scripts', [$this->ui, 'enqueue_assets']);
         add_action('wp_footer', [$this->ui, 'render_global_popup'], 30);
+        add_action('template_redirect', [$this->cancellation_controller, 'maybe_render_page']);
 
         add_action('update_option_' . Restatify_Booking_Assistant_Constants::OPTION_KEY, [$this, 'handle_options_updated'], 10, 2);
         add_filter('wp_link_query', [$this->ui, 'extend_wp_link_query'], 10, 2);

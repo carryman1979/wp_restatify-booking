@@ -2,7 +2,7 @@
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 1.3.0
+Version: 1.3.1
 
 ## Features
 
@@ -126,6 +126,13 @@ Woechentliche Verfuegbarkeitszeilen:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 1.3.1
+
+- Admin-Oberflaeche fuer Kalender-, Verfuegbarkeits- und Kontaktkanalpflege weiter aufgeraeumt und strukturiert.
+- Fehlerbehandlung im Buchungs-Popup verbessert, inklusive Rueckweg zur Terminauswahl bei fehlgeschlagener Reservierung.
+- Hash-Link-Verhalten fuer das Buchungs-Overlay auf derselben Seite und ueber Navigationslinks stabilisiert.
+- Empfohlene API-Kombination auf Booking API 1.2.1 angehoben, damit Feiertags- und Live-Kalenderpruefung konsistent zusammenarbeiten.
 
 ### 1.3.0
 

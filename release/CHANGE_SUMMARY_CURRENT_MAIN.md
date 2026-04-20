@@ -1,11 +1,11 @@
 Restatify Booking Assistant: current local changes on main
 
-- Version bump from 1.2.x to 1.3.0 in the plugin bootstrap and README.
-- Added a public cancellation controller with token-based cancellation page rendering, nonce protection, captcha validation, and cancellation confirmation handling.
-- Extended the booking flow to pass API cancel tokens into a generated cancellation URL for outgoing mails.
-- Expanded autoresponder support to include branded HTML/text booking mails, subscriber cancellation mails, and optional owner booking/cancellation notifications.
-- Added dynamic mail branding defaults that adopt Restatify theme logo and palette when the base theme is active, with plugin fallback branding otherwise.
-- Extended plugin settings UI with richer mail editors, placeholder insertion, owner-notification settings, and structured calendar-source rows.
-- Improved frontend validation and wizard UX in booking JavaScript and CSS, including disabled/ready states and inline validation feedback.
-- Fixed API error handling so structured FastAPI validation payloads are flattened into readable messages instead of surfacing as "Array".
-- Added release documentation and cleaned release packaging for the 1.3.0 archive.
+- Current released baseline on GitHub remains `1.3.0`.
+- Admin settings page was reorganized into clearer cards for API connection, booking logic, calendars/availability, and contact channels.
+- Contact channels were moved into the basic settings area and replaced with a structured row editor similar to calendar source management.
+- Weekly availability rules were redesigned from raw text lines into Monday-Sunday cards with enable toggles and unlimited time slots per day.
+- Mail template editing was streamlined into overlay popups with WYSIWYG editors instead of large inline editors on the settings page.
+- Visible admin copy in touched areas was polished toward proper German umlauts and clearer wording.
+- Mail template action buttons now include concise status summaries for the affected sections.
+- Dynamic mail defaults were refined and backward-compatible migration logic was added so unchanged older defaults can be refreshed automatically.
+- Existing legacy raw formats for contact channels and availability remain available as fallbacks for compatibility.

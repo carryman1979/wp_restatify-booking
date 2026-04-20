@@ -142,7 +142,7 @@ final class Restatify_Booking_Assistant_UI {
         $results[] = [
             'ID' => 0,
             'title' => __('Buchungs-Popup (Restatify)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'permalink' => home_url('/') . Restatify_Booking_Assistant_Constants::BOOKING_TRIGGER_HASH,
+            'permalink' => Restatify_Booking_Assistant_Constants::BOOKING_TRIGGER_HASH,
             'info' => __('Öffnet beim Klick das Restatify Buchungs-Overlay.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
         ];
 
@@ -1627,6 +1627,7 @@ final class Restatify_Booking_Assistant_UI {
                             <button type="button" class="restatify-booking__wizard-btn" data-step-next><?php esc_html_e('Weiter', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
                         </div>
 
+                        <button type="button" class="restatify-booking__wizard-btn" data-step-pick-slot hidden><?php esc_html_e('Ersatztermin wählen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
                         <button type="submit" class="restatify-booking__submit" hidden><?php esc_html_e('Jetzt reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
                     </form>
                 </div>

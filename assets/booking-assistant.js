@@ -19,6 +19,7 @@
     var wizardSteps = root.querySelectorAll('[data-booking-step]');
     var wizardPrev = root.querySelector('[data-step-prev]');
     var wizardNext = root.querySelector('[data-step-next]');
+    var wizardPickSlot = root.querySelector('[data-step-pick-slot]');
     var wizardIndicator = root.querySelector('[data-step-indicator]');
     var contactMethodInput = root.querySelector('[data-contact-method]');
     var contactChannelsNode = root.querySelector('[data-contact-channels]');
@@ -79,7 +80,11 @@
     }
 
     function clearValidationFeedback() {
+      var hadErrorStatus = statusNode.classList.contains('is-error');
       statusNode.classList.remove('is-error');
+      if (hadErrorStatus) {
+        statusNode.textContent = '';
+      }
 
       var invalidFields = form.querySelectorAll('.is-invalid');
       for (var i = 0; i < invalidFields.length; i += 1) {
@@ -211,6 +216,7 @@
       var isFirst = bookingState.currentFormStep === 0;
       var isLast = bookingState.currentFormStep === total - 1;
       var canAdvance = isStepValid(bookingState.currentFormStep);
+      var hasErrorStatus = statusNode.classList.contains('is-error');
 
       if (wizardPrev) {
         wizardPrev.hidden = isFirst;
@@ -218,6 +224,9 @@
       if (wizardNext) {
         wizardNext.hidden = isLast;
         setWizardButtonState(wizardNext, isLast || !canAdvance);
+      }
+      if (wizardPickSlot) {
+        wizardPickSlot.hidden = !(isLast && hasErrorStatus);
       }
       if (wizardIndicator) {
         wizardIndicator.textContent = String(bookingState.currentFormStep + 1) + '/' + String(total);
@@ -408,6 +417,7 @@
               bookingState.selectedDayKey = clickedDay;
               bookingState.selectedSlot = '';
               slotStartInput.value = '';
+              clearValidationFeedback();
               renderDateStep();
               renderTimeStep();
               updateFormWizard();
@@ -450,6 +460,7 @@
         button.addEventListener('click', function () {
           bookingState.selectedSlot = slot.start_iso;
           slotStartInput.value = slot.start_iso;
+          clearValidationFeedback();
           renderTimeStep();
           updateFormWizard();
         });
@@ -480,6 +491,7 @@
         if (!data || data.success !== true) {
           var message = data && data.data && data.data.message ? String(data.data.message) : restatifyBookingAssistant.strings.error;
           statusNode.textContent = message;
+          statusNode.classList.add('is-error');
           form.hidden = true;
           return;
         }
@@ -505,7 +517,7 @@
         statusNode.classList.remove('is-error');
       }).catch(function () {
         statusNode.textContent = restatifyBookingAssistant.strings.error;
-          statusNode.classList.remove('is-error');
+        statusNode.classList.add('is-error');
         form.hidden = true;
       });
     }
@@ -586,6 +598,8 @@
           setSubmitBusy(false);
           var message = data && data.data && data.data.message ? String(data.data.message) : restatifyBookingAssistant.strings.error;
           statusNode.textContent = message;
+          statusNode.classList.add('is-error');
+          updateFormWizard();
           return;
         }
 
@@ -611,7 +625,8 @@
       }).catch(function () {
         setSubmitBusy(false);
         statusNode.textContent = restatifyBookingAssistant.strings.error;
-        statusNode.classList.remove('is-error');
+        statusNode.classList.add('is-error');
+        updateFormWizard();
       });
     }
 
@@ -694,6 +709,19 @@
     if (wizardPrev) {
       wizardPrev.addEventListener('click', function () {
         bookingState.currentFormStep -= 1;
+        clearValidationFeedback();
+        updateFormWizard();
+      });
+    }
+
+    if (wizardPickSlot) {
+      wizardPickSlot.addEventListener('click', function () {
+        bookingState.currentFormStep = 0;
+        bookingState.selectedSlot = '';
+        slotStartInput.value = '';
+        clearValidationFeedback();
+        renderDateStep();
+        renderTimeStep();
         updateFormWizard();
       });
     }
@@ -791,6 +819,10 @@
     if (target && typeof target.restatifyOpenPopup === 'function') {
       target.restatifyOpenPopup();
     }
+
+    if (window.location.hash === '#restatify-booking' && window.history && typeof window.history.replaceState === 'function') {
+      window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -801,9 +833,36 @@
     });
 
     document.addEventListener('click', function (event) {
-      var trigger = event.target.closest('a[href="#restatify-booking"], a[href$="#restatify-booking"]');
+      var trigger = event.target.closest('a[href]');
       if (!trigger) {
         return;
+      }
+
+      var targetUrl;
+      try {
+        targetUrl = new URL(trigger.href, window.location.href);
+      } catch (error) {
+        return;
+      }
+
+      if (targetUrl.hash !== '#restatify-booking') {
+        return;
+      }
+
+      if (targetUrl.origin !== window.location.origin) {
+        return;
+      }
+
+      if (!popupRoots.length) {
+        return;
+      }
+
+      var sameDocument = targetUrl.origin === window.location.origin
+        && targetUrl.pathname === window.location.pathname
+        && targetUrl.search === window.location.search;
+
+      if (!sameDocument && window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, document.title, window.location.pathname + window.location.search + '#restatify-booking');
       }
 
       event.preventDefault();

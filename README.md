@@ -2,7 +2,7 @@
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 1.3.1
+Version: 1.3.2
 
 ## Features
 
@@ -26,6 +26,14 @@ Version: 1.3.1
 - Funktioniert standalone nur mit der Booking API (Multi Chat Overlay ist optional).
 - Funktioniert mit Multi Chat Overlay fuer chat-ausgeloestes Oeffnen der Buchung und Status-Rueckmeldungen im Chat.
 - Wenn Multi Chat Overlay nicht installiert ist, laeuft der Buchungsablauf normal weiter und Chat-Events werden sicher ignoriert.
+
+## LightStart-Wartungsmodus (Integration)
+
+- In den Plugin-Einstellungen gibt es die Option `Bei LightStart-Wartung ausblenden`.
+- Standardwert ist `AN`.
+- Die Option wird nur angezeigt, wenn LightStart (`wp-maintenance-mode`) installiert und aktiviert ist.
+- Ist LightStart nicht installiert oder nicht aktiv, wird diese Option nicht angezeigt und das Booking-Overlay bleibt sichtbar.
+- Ist LightStart aktiv und Wartungsmodus eingeschaltet, wird das Booking-Overlay bei aktivierter Option automatisch unterdrueckt.
 
 ## Installation
 
@@ -126,6 +134,14 @@ Woechentliche Verfuegbarkeitszeilen:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 1.3.2
+
+- LightStart-Integration fuer Wartungsmodus hinzugefuegt.
+- Neue Option `Bei LightStart-Wartung ausblenden` in den Plugin-Einstellungen (Standard: AN).
+- Option nur sichtbar, wenn LightStart (`wp-maintenance-mode`) installiert und aktiv ist.
+- Booking-Overlay (Assets, Shortcode, Global-Overlay) wird bei aktivem LightStart-Wartungsstatus optional unterdrueckt.
+- Dokumentation fuer Betrieb mit LightStart erweitert.
 
 ### 1.3.1
 

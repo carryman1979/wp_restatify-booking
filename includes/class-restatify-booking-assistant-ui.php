@@ -27,6 +27,9 @@ final class Restatify_Booking_Assistant_UI {
         $base_url = plugin_dir_url($this->plugin_file) . 'assets/';
         $base_path = plugin_dir_path($this->plugin_file) . 'assets/';
         $options = $this->options_service->get_options();
+        if ($this->should_disable_during_maintenance($options)) {
+            return;
+        }
         $no_slots_contact_email = sanitize_email((string) ($options['no_slots_contact_email'] ?? ''));
         if ($no_slots_contact_email === '') {
             $no_slots_contact_email = sanitize_email((string) get_option('admin_email', ''));
@@ -92,6 +95,11 @@ final class Restatify_Booking_Assistant_UI {
      * @param array<string,mixed> $atts
      */
     public function render_shortcode(array $atts): string {
+        $options = $this->options_service->get_options();
+        if ($this->should_disable_during_maintenance($options)) {
+            return '';
+        }
+
         $atts = shortcode_atts([
             'label' => __('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             'title' => __('Gespräch buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
@@ -105,6 +113,11 @@ final class Restatify_Booking_Assistant_UI {
      */
     public function render_global_popup(): void {
         if (is_admin() || is_feed()) {
+            return;
+        }
+
+        $options = $this->options_service->get_options();
+        if ($this->should_disable_during_maintenance($options)) {
             return;
         }
 
@@ -711,6 +724,17 @@ final class Restatify_Booking_Assistant_UI {
                                     <p class="description"><?php esc_html_e('Wird angezeigt, wenn im konfigurierten Suchzeitraum keine freien Termine verfügbar sind.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
                                 </td>
                             </tr>
+                            <?php if ($this->is_lightstart_available()) : ?>
+                                <tr>
+                                    <th scope="row"><?php esc_html_e('Bei LightStart-Wartung ausblenden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></th>
+                                    <td>
+                                        <label>
+                                            <input type="checkbox" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[disable_during_maintenance]" value="1" <?php checked(!empty($options['disable_during_maintenance'])); ?>>
+                                            <?php esc_html_e('Booking-Overlay nicht anzeigen, solange der Wartungsmodus (LightStart) aktiv ist.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>
+                                        </label>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         </table>
                     </section>
 
@@ -1495,6 +1519,44 @@ final class Restatify_Booking_Assistant_UI {
         }
 
         return !empty($multi_chat_options['enabled']) && !empty($multi_chat_options['own_chat_enabled']);
+    }
+
+    /**
+     * @param array<string,mixed> $options
+     */
+    private function should_disable_during_maintenance(array $options): bool {
+        if (empty($options['disable_during_maintenance'])) {
+            return false;
+        }
+
+        if (!$this->is_lightstart_available()) {
+            return false;
+        }
+
+        $maintenance_options = get_option('wpmm_settings', []);
+        if (!is_array($maintenance_options)) {
+            return false;
+        }
+
+        return !empty($maintenance_options['general']['status']);
+    }
+
+    /**
+     * Detect whether LightStart is installed and currently active.
+     *
+     * We check both standard and multisite network activation to keep the
+     * maintenance toggle behavior consistent across installations.
+     */
+    private function is_lightstart_available(): bool {
+        if (!file_exists(WP_PLUGIN_DIR . '/wp-maintenance-mode/wp-maintenance-mode.php')) {
+            return false;
+        }
+
+        $active_plugins = (array) get_option('active_plugins', []);
+        $network_plugins = is_multisite() ? (array) get_site_option('active_sitewide_plugins', []) : [];
+
+        return in_array('wp-maintenance-mode/wp-maintenance-mode.php', $active_plugins, true)
+            || isset($network_plugins['wp-maintenance-mode/wp-maintenance-mode.php']);
     }
 
     /**

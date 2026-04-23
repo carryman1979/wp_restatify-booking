@@ -190,6 +190,7 @@ final class Restatify_Booking_Assistant_Options {
         return [
             'api_base_url' => esc_url_raw((string) ($input['api_base_url'] ?? $defaults['api_base_url'])),
             'api_key' => sanitize_text_field((string) ($input['api_key'] ?? $defaults['api_key'])),
+            'disable_during_maintenance' => !empty($input['disable_during_maintenance']),
             'default_timezone' => sanitize_text_field((string) ($input['default_timezone'] ?? $defaults['default_timezone'])),
             'default_duration_minutes' => max(15, min(180, absint($input['default_duration_minutes'] ?? $defaults['default_duration_minutes']))),
             'slot_window_days' => max(1, min(60, absint($input['slot_window_days'] ?? $defaults['slot_window_days']))),
@@ -486,6 +487,9 @@ final class Restatify_Booking_Assistant_Options {
 
     /**
      * Returns default options used on first install and as merge fallback.
+        *
+        * LightStart maintenance visibility is opt-out by default to avoid overlay
+        * rendering during active maintenance windows.
      *
      * @return array<string,mixed>
      */
@@ -495,6 +499,7 @@ final class Restatify_Booking_Assistant_Options {
         return [
             'api_base_url' => 'https://booking-api.example.com',
             'api_key' => '',
+            'disable_during_maintenance' => true,
             'default_timezone' => wp_timezone_string() ?: 'Europe/Berlin',
             'default_duration_minutes' => 30,
             'slot_window_days' => 14,

@@ -42,6 +42,8 @@ final class Restatify_Booking_Assistant_Plugin {
         add_action('admin_init', [$this->options_service, 'register_polylang_strings']);
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_notices', [$this, 'render_admin_notice']);
+        add_action('admin_post_' . Restatify_Booking_Assistant_Constants::FORCE_SYNC_ACTION, [$this, 'handle_force_sync']);
+        add_action('wp_dashboard_setup', [$this, 'register_dashboard_widget']);
         add_action('wp_enqueue_scripts', [$this->ui, 'enqueue_assets']);
         add_action('wp_footer', [$this->ui, 'render_global_popup'], 30);
         add_action('template_redirect', [$this->cancellation_controller, 'maybe_render_page']);
@@ -97,22 +99,251 @@ final class Restatify_Booking_Assistant_Plugin {
             return;
         }
 
-        $result = $this->api_client->push_sync_config($new_value);
-        if (is_wp_error($result)) {
-            set_transient(Restatify_Booking_Assistant_Constants::ADMIN_NOTICE_TRANSIENT, [
-                'type' => 'error',
-                'message' => sprintf(
-                    __('Sync configuration could not be sent to API: %s', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                    $result->get_error_message()
-                ),
-            ], 60);
+        $this->push_sync_config($new_value, false);
+    }
+
+    /**
+     * Handles explicit manual force-sync action from settings page.
+     */
+    public function handle_force_sync(): void {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to perform this action.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN));
+        }
+
+        check_admin_referer(Restatify_Booking_Assistant_Constants::FORCE_SYNC_NONCE_ACTION);
+
+        $options = $this->options_service->get_options();
+        $this->push_sync_config($options, true);
+
+        wp_safe_redirect(add_query_arg(['page' => 'restatify-booking-assistant'], admin_url('options-general.php')));
+        exit;
+    }
+
+    /**
+     * Registers Booking API status widget in wp-admin dashboard.
+     */
+    public function register_dashboard_widget(): void {
+        if (!current_user_can('manage_options')) {
             return;
         }
 
+        wp_add_dashboard_widget(
+            'restatify_booking_assistant_status_widget',
+            __('Booking API Status', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            [$this, 'render_dashboard_widget']
+        );
+    }
+
+    /**
+     * Renders dashboard widget with current API connectivity status.
+     */
+    public function render_dashboard_widget(): void {
+        $status = $this->probe_connection_status();
+        $state = (string) ($status['state'] ?? 'error');
+        $message = (string) ($status['message'] ?? __('Status unknown.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN));
+        $checked_at = (int) ($status['checked_at'] ?? time());
+        $calendar_sources = max(0, absint($status['calendar_sources'] ?? 0));
+
+        $badge_styles = [
+            'success' => 'background:#e8f8ef;color:#116b37;border:1px solid #b8ebcb;',
+            'warning' => 'background:#fff8e7;color:#915d00;border:1px solid #f3d28f;',
+            'error' => 'background:#fff1f1;color:#9f1f1f;border:1px solid #f4b5b5;',
+        ];
+        $badge_labels = [
+            'success' => __('Connected', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'warning' => __('Needs Attention', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'error' => __('Disconnected', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+        ];
+
+        $badge_style = $badge_styles[$state] ?? $badge_styles['error'];
+        $badge_label = $badge_labels[$state] ?? $badge_labels['error'];
+        $force_sync_url = wp_nonce_url(
+            admin_url('admin-post.php?action=' . Restatify_Booking_Assistant_Constants::FORCE_SYNC_ACTION),
+            Restatify_Booking_Assistant_Constants::FORCE_SYNC_NONCE_ACTION
+        );
+
+        echo '<p><span style="display:inline-block;padding:4px 10px;border-radius:999px;font-weight:600;' . esc_attr($badge_style) . '">' . esc_html($badge_label) . '</span></p>';
+        echo '<p>' . esc_html($message) . '</p>';
+        echo '<ul style="margin:0 0 12px 1.2em;list-style:disc;">';
+        echo '<li>' . sprintf(esc_html__('Calendar sources configured: %d', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), $calendar_sources) . '</li>';
+        echo '<li>' . sprintf(esc_html__('Last checked: %s', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), esc_html(wp_date('Y-m-d H:i:s', $checked_at))) . '</li>';
+        echo '</ul>';
+        echo '<p><a class="button button-secondary" href="' . esc_url($force_sync_url) . '">' . esc_html__('Force Sync Now', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN) . '</a> ';
+        echo '<a class="button" href="' . esc_url(admin_url('options-general.php?page=restatify-booking-assistant')) . '">' . esc_html__('Open Booking Settings', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN) . '</a></p>';
+    }
+
+    /**
+     * Pushes current sync config to API and stores admin notice/status.
+     *
+     * @param array<string,mixed> $new_value
+     */
+    private function push_sync_config(array $new_value, bool $is_manual): void {
+        $result = $this->api_client->push_sync_config($new_value);
+        if (is_wp_error($result)) {
+            $message = sprintf(
+                __('Sync configuration could not be sent to API: %s', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                $result->get_error_message()
+            );
+            set_transient(Restatify_Booking_Assistant_Constants::ADMIN_NOTICE_TRANSIENT, [
+                'type' => 'error',
+                'message' => $message,
+            ], 60);
+
+            $this->store_connection_status([
+                'state' => 'error',
+                'message' => $result->get_error_message(),
+                'calendar_sources' => 0,
+                'checked_at' => time(),
+            ]);
+            return;
+        }
+
+        $success_message = $is_manual
+            ? __('Force sync completed successfully.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+            : __('Sync configuration was updated in Booking API.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN);
         set_transient(Restatify_Booking_Assistant_Constants::ADMIN_NOTICE_TRANSIENT, [
             'type' => 'success',
-            'message' => __('Sync configuration was updated in Booking API.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'message' => $success_message,
         ], 60);
+
+        $calendar_sources = is_array($result['calendar_sources'] ?? null) ? count($result['calendar_sources']) : 0;
+        $this->store_connection_status([
+            'state' => $calendar_sources > 0 ? 'success' : 'warning',
+            'message' => $calendar_sources > 0
+                ? __('Connection and authentication with Booking API are healthy.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+                : __('Booking API is reachable, but no calendar sources are configured.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'calendar_sources' => $calendar_sources,
+            'checked_at' => time(),
+        ]);
+    }
+
+    /**
+     * Performs live connectivity/authentication checks against configured API.
+     *
+     * @return array<string,mixed>
+     */
+    private function probe_connection_status(): array {
+        $options = $this->options_service->get_options();
+        $base_url = rtrim((string) ($options['api_base_url'] ?? ''), '/');
+        $api_key = trim((string) ($options['api_key'] ?? ''));
+
+        if ($base_url === '' || $api_key === '') {
+            $status = [
+                'state' => 'error',
+                'message' => __('Booking API base URL or API key is missing.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'calendar_sources' => 0,
+                'checked_at' => time(),
+            ];
+            $this->store_connection_status($status);
+            return $status;
+        }
+
+        $health_response = wp_remote_get($base_url . '/health', [
+            'timeout' => 8,
+            'headers' => [
+                'Accept' => 'application/json',
+            ],
+        ]);
+
+        if (is_wp_error($health_response)) {
+            $status = [
+                'state' => 'error',
+                'message' => sprintf(
+                    __('Booking API is unreachable: %s', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                    $health_response->get_error_message()
+                ),
+                'calendar_sources' => 0,
+                'checked_at' => time(),
+            ];
+            $this->store_connection_status($status);
+            return $status;
+        }
+
+        $health_code = (int) wp_remote_retrieve_response_code($health_response);
+        if ($health_code < 200 || $health_code >= 300) {
+            $status = [
+                'state' => 'error',
+                'message' => sprintf(
+                    __('Booking API health check failed with HTTP %d.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                    $health_code
+                ),
+                'calendar_sources' => 0,
+                'checked_at' => time(),
+            ];
+            $this->store_connection_status($status);
+            return $status;
+        }
+
+        $config_response = wp_remote_get($base_url . '/v1/config/sync', [
+            'timeout' => 10,
+            'headers' => [
+                'Accept' => 'application/json',
+                'X-API-Key' => $api_key,
+            ],
+        ]);
+
+        if (is_wp_error($config_response)) {
+            $status = [
+                'state' => 'error',
+                'message' => sprintf(
+                    __('Booking API authentication check failed: %s', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                    $config_response->get_error_message()
+                ),
+                'calendar_sources' => 0,
+                'checked_at' => time(),
+            ];
+            $this->store_connection_status($status);
+            return $status;
+        }
+
+        $config_code = (int) wp_remote_retrieve_response_code($config_response);
+        if ($config_code === 401 || $config_code === 403) {
+            $status = [
+                'state' => 'error',
+                'message' => __('Booking API rejected the configured API key.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'calendar_sources' => 0,
+                'checked_at' => time(),
+            ];
+            $this->store_connection_status($status);
+            return $status;
+        }
+
+        if ($config_code < 200 || $config_code >= 300) {
+            $status = [
+                'state' => 'error',
+                'message' => sprintf(
+                    __('Booking API config check failed with HTTP %d.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                    $config_code
+                ),
+                'calendar_sources' => 0,
+                'checked_at' => time(),
+            ];
+            $this->store_connection_status($status);
+            return $status;
+        }
+
+        $config_body = json_decode((string) wp_remote_retrieve_body($config_response), true);
+        $calendar_sources = is_array($config_body['calendar_sources'] ?? null)
+            ? count($config_body['calendar_sources'])
+            : 0;
+
+        $status = [
+            'state' => $calendar_sources > 0 ? 'success' : 'warning',
+            'message' => $calendar_sources > 0
+                ? __('Booking API reachable, authenticated, and calendar sources are configured.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
+                : __('Booking API reachable and authenticated, but no calendar sources are configured.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'calendar_sources' => $calendar_sources,
+            'checked_at' => time(),
+        ];
+        $this->store_connection_status($status);
+        return $status;
+    }
+
+    /**
+     * @param array<string,mixed> $status
+     */
+    private function store_connection_status(array $status): void {
+        update_option(Restatify_Booking_Assistant_Constants::CONNECTION_STATUS_OPTION, $status, false);
     }
 
     /**

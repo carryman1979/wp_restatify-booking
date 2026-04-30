@@ -978,6 +978,16 @@ final class Restatify_Booking_Assistant_UI {
                 <?php foreach ($mail_template_modals as $modal) : ?>
                     <?php $this->render_mail_template_modal($modal, $options, $mail_placeholders); ?>
                 <?php endforeach; ?>
+                <?php
+                $force_sync_url = wp_nonce_url(
+                    admin_url('admin-post.php?action=' . Restatify_Booking_Assistant_Constants::FORCE_SYNC_ACTION),
+                    Restatify_Booking_Assistant_Constants::FORCE_SYNC_NONCE_ACTION
+                );
+                ?>
+                <p>
+                    <a class="button button-secondary" href="<?php echo esc_url($force_sync_url); ?>"><?php esc_html_e('Force Sync jetzt ausführen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></a>
+                    <span class="description" style="margin-left:8px;"><?php esc_html_e('Sendet die aktuellen Sync-Einstellungen sofort erneut an die Booking API.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                </p>
                 <?php submit_button(); ?>
             </form>
 

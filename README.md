@@ -2,15 +2,17 @@
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 1.3.2
+Version: 1.3.3
 
 ## Features
 
 - Shortcode-Popup fuer Termin-Suche und Reservierung
 - Globaler Buchungs-Overlay-Trigger ueber Link-Hash `#restatify-booking`
 - Verbindung zur Restatify Booking API
+- Dashboard-Widget mit Live-Status fuer API-Erreichbarkeit, Authentifizierung und Kalenderquellen
 - Grundkonfiguration (erforderlich): API-Endpunkt und API-Key
 - Experteneinstellungen (optional): Sync-Intervall, Kalenderliste, woechentliche Verfuegbarkeitsfenster, Autoresponder-Text
+- Force-Sync-Button in den Einstellungen, um Sync-Konfiguration sofort erneut an die API zu senden
 - Kalenderquellen-Modi mit `private`/`official` und `general`/`holiday`
 - Branded HTML-/Text-Mails fuer Reservierung, Stornobestaetigung und interne Benachrichtigungen
 - Theme-aware Mail-Branding: nutzt bei aktivem Restatify-Theme Logo und CI-Farben, sonst Platzhalter-Logo und Standardfarben
@@ -134,6 +136,12 @@ Woechentliche Verfuegbarkeitszeilen:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 1.3.3
+
+- Dashboard-Widget `Booking API Status` hinzugefuegt (Verbindung, API-Key-Pruefung, Kalenderquellen, letzter Check).
+- Force-Sync-Button in den Plugin-Einstellungen hinzugefuegt.
+- Admin-Post Action fuer manuellen Sync mit Nonce- und Capability-Pruefung ergaenzt.
 
 ### 1.3.2
 

@@ -8,12 +8,16 @@ if (!defined('ABSPATH')) {
  * Manages plugin options lifecycle (defaults, sanitizing, parsing and translated reads).
  */
 final class Restatify_Booking_Assistant_Options {
+    private bool $migration_checked = false;
+
     /**
      * Registers the plugin settings schema and sanitizer.
      */
     public function register_settings(): void {
+        $this->ensure_legacy_options_migrated();
+
         register_setting(
-            'restatify_booking_assistant',
+            Restatify_Booking_Assistant_Constants::SETTINGS_GROUP,
             Restatify_Booking_Assistant_Constants::OPTION_KEY,
             [
                 'type' => 'array',
@@ -124,6 +128,8 @@ final class Restatify_Booking_Assistant_Options {
      * @return array<string,mixed>
      */
     public function get_options(): array {
+        $this->ensure_legacy_options_migrated();
+
         $saved = get_option(Restatify_Booking_Assistant_Constants::OPTION_KEY, []);
         if (!is_array($saved)) {
             $saved = [];
@@ -1070,6 +1076,40 @@ HTML;
 
         return $value;
     }
+
+    private function ensure_legacy_options_migrated(): void {
+        if ($this->migration_checked) {
+            return;
+        }
+        $this->migration_checked = true;
+
+        $current = get_option(Restatify_Booking_Assistant_Constants::OPTION_KEY, null);
+        if (is_array($current) && count($current) > 0) {
+            return;
+        }
+
+        foreach (Restatify_Booking_Assistant_Constants::LEGACY_OPTION_KEYS as $legacy_key) {
+            $legacy = get_option((string) $legacy_key, null);
+            if (!is_array($legacy) || count($legacy) === 0) {
+                continue;
+            }
+
+            update_option(Restatify_Booking_Assistant_Constants::OPTION_KEY, $legacy, false);
+            update_option(
+                Restatify_Booking_Assistant_Constants::MIGRATION_STATE_OPTION,
+                [
+                    'completed' => true,
+                    'show_notice' => true,
+                    'source_option_key' => (string) $legacy_key,
+                    'migrated_at' => time(),
+                    'logs_history_migrated' => false,
+                ],
+                false
+            );
+            return;
+        }
+    }
+
 }
 
 

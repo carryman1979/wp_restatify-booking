@@ -17,6 +17,7 @@ if (!defined('RESTATIFY_BOOKING_OPEN_TOKEN')) {
 }
 
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-constants.php';
+require_once __DIR__ . '/includes/class-restatify-shared-migration-notice-manager.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-options.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-api-client.php';
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-autoresponder.php';

@@ -7,7 +7,7 @@ Company: https://www.restatify.tech
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 2.0.0
+Version: 2.0.1
 
 ## Features
 
@@ -62,7 +62,7 @@ Fuer externe Updates immer das Release-ZIP mit Root-Ordner erzeugen:
 powershell -ExecutionPolicy Bypass -File scripts/create-release-zip.ps1
 ```
 
-Das Skript erzeugt das Artefakt unter `release/wp-restatify-booking-assistant-<version>.zip`.
+Das Skript erzeugt das Artefakt unter `release/wp_restatify-booking-<version>.zip`.
 Dieses ZIP kann im WordPress-Plugin-Installer als echtes Update eingespielt werden.
 
 ## Architecture

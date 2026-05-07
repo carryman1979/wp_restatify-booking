@@ -37,21 +37,21 @@ final class Restatify_Booking_Assistant_UI {
         $multi_chat_available = $this->is_multi_chat_overlay_chat_enabled();
 
         wp_enqueue_style(
-            'restatify-booking-assistant',
+            Restatify_Booking_Assistant_Constants::FRONTEND_ASSET_HANDLE,
             $base_url . 'booking-assistant.css',
             [],
             file_exists($base_path . 'booking-assistant.css') ? (string) filemtime($base_path . 'booking-assistant.css') : '1.0.0'
         );
 
         wp_enqueue_script(
-            'restatify-booking-assistant',
+            Restatify_Booking_Assistant_Constants::FRONTEND_ASSET_HANDLE,
             $base_url . 'booking-assistant.js',
             [],
             file_exists($base_path . 'booking-assistant.js') ? (string) filemtime($base_path . 'booking-assistant.js') : '1.0.0',
             true
         );
 
-        wp_localize_script('restatify-booking-assistant', 'restatifyBookingAssistant', [
+        wp_localize_script(Restatify_Booking_Assistant_Constants::FRONTEND_ASSET_HANDLE, 'restatifyBookingAssistant', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(Restatify_Booking_Assistant_Constants::NONCE_ACTION),
             'chatNonce' => wp_create_nonce('restatify_mco_chat_nonce'),
@@ -643,7 +643,7 @@ final class Restatify_Booking_Assistant_UI {
             <h1><?php esc_html_e('Restatify Booking Assistant', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></h1>
             <p><?php esc_html_e('Konfiguriere zuerst die grundlegende API-Verbindung. Kontaktkanäle sind direkt in der Basis-Konfiguration verfügbar, erweiterte Einstellungen für Synchronisierung und E-Mail-Templates folgen darunter.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
             <form method="post" action="options.php">
-                <?php settings_fields('restatify_booking_assistant'); ?>
+                <?php settings_fields(Restatify_Booking_Assistant_Constants::SETTINGS_GROUP); ?>
 
                 <h2><?php esc_html_e('Grundkonfiguration (erforderlich)', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></h2>
                 <div class="rs-admin-grid">

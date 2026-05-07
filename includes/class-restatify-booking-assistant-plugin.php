@@ -48,6 +48,31 @@ final class Restatify_Booking_Assistant_Plugin {
         add_action('wp_footer', [$this->ui, 'render_global_popup'], 30);
         add_action('template_redirect', [$this->cancellation_controller, 'maybe_render_page']);
 
+        Restatify_Shared_Migration_Notice_Manager::register([
+            'state_option_key' => Restatify_Booking_Assistant_Constants::MIGRATION_STATE_OPTION,
+            'state_show_key' => 'show_notice',
+            'page_slug' => Restatify_Booking_Assistant_Constants::ADMIN_PAGE_SLUG,
+            'legacy_option_keys' => Restatify_Booking_Assistant_Constants::LEGACY_OPTION_KEYS,
+            'notice_transient_key' => Restatify_Booking_Assistant_Constants::ADMIN_NOTICE_TRANSIENT,
+            'action_query_arg' => 'restatify_booking_migration_notice_action',
+            'nonce_query_arg' => 'restatify_booking_migration_notice_nonce',
+            'nonce_action' => 'restatify_booking_migration_notice',
+            'title_de' => 'Restatify Booking 2.0: Migration abgeschlossen',
+            'title_en' => 'Restatify Booking 2.0: Migration completed',
+            'body_de' => 'Ihre Einstellungen wurden aus der Legacy-Konfiguration uebernommen. Standard ist: Legacy-Einstellungen vorerst behalten.',
+            'body_en' => 'Your settings were migrated from the legacy configuration. Default is to keep legacy settings for now.',
+            'warning_de' => 'Hinweis: Protokolle und Verlauf wurden bewusst nicht migriert.',
+            'warning_en' => 'Note: logs and history were intentionally not migrated.',
+            'keep_label_de' => 'Legacy-Einstellungen behalten (Standard)',
+            'keep_label_en' => 'Keep legacy settings (default)',
+            'remove_label_de' => 'Legacy-Einstellungen entfernen',
+            'remove_label_en' => 'Remove legacy settings',
+            'success_keep_de' => 'Legacy-Einstellungen wurden zur Sicherheit beibehalten. Sie koennen diese spaeter entfernen.',
+            'success_keep_en' => 'Legacy settings were kept for safety. You can remove them later.',
+            'success_remove_de' => 'Legacy-Einstellungen wurden entfernt. Die aktuellen Restatify Booking Einstellungen bleiben aktiv.',
+            'success_remove_en' => 'Legacy settings were removed. Current Restatify Booking settings stay active.',
+        ]);
+
         add_action('update_option_' . Restatify_Booking_Assistant_Constants::OPTION_KEY, [$this, 'handle_options_updated'], 10, 2);
         add_filter('wp_link_query', [$this->ui, 'extend_wp_link_query'], 10, 2);
 
@@ -83,7 +108,7 @@ final class Restatify_Booking_Assistant_Plugin {
             __('Restatify Booking Assistant', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             __('Booking Assistant', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
             'manage_options',
-            'restatify-booking-assistant',
+            Restatify_Booking_Assistant_Constants::ADMIN_PAGE_SLUG,
             [$this->ui, 'render_admin_page']
         );
     }
@@ -115,7 +140,7 @@ final class Restatify_Booking_Assistant_Plugin {
         $options = $this->options_service->get_options();
         $this->push_sync_config($options, true);
 
-        wp_safe_redirect(add_query_arg(['page' => 'restatify-booking-assistant'], admin_url('options-general.php')));
+        wp_safe_redirect(add_query_arg(['page' => Restatify_Booking_Assistant_Constants::ADMIN_PAGE_SLUG], admin_url('options-general.php')));
         exit;
     }
 
@@ -169,7 +194,7 @@ final class Restatify_Booking_Assistant_Plugin {
         echo '<li>' . sprintf(esc_html__('Last checked: %s', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), esc_html(wp_date('Y-m-d H:i:s', $checked_at))) . '</li>';
         echo '</ul>';
         echo '<p><a class="button button-secondary" href="' . esc_url($force_sync_url) . '">' . esc_html__('Force Sync Now', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN) . '</a> ';
-        echo '<a class="button" href="' . esc_url(admin_url('options-general.php?page=restatify-booking-assistant')) . '">' . esc_html__('Open Booking Settings', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN) . '</a></p>';
+        echo '<a class="button" href="' . esc_url(admin_url('options-general.php?page=' . Restatify_Booking_Assistant_Constants::ADMIN_PAGE_SLUG)) . '">' . esc_html__('Open Booking Settings', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN) . '</a></p>';
     }
 
     /**
@@ -354,7 +379,7 @@ final class Restatify_Booking_Assistant_Plugin {
             return;
         }
 
-        if (!isset($_GET['page']) || sanitize_key((string) $_GET['page']) !== 'restatify-booking-assistant') {
+        if (!isset($_GET['page']) || sanitize_key((string) $_GET['page']) !== Restatify_Booking_Assistant_Constants::ADMIN_PAGE_SLUG) {
             return;
         }
 

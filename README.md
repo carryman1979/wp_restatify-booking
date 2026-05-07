@@ -1,5 +1,10 @@
 # WP Restatify Booking Assistant
 
+Product: Restatify-Booking  
+Current slug: wp_restatify-booking-assistant  
+Target slug (2.0.0): wp_restatify-booking  
+Company: https://www.restatify.tech
+
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
 Version: 1.3.3

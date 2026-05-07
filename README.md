@@ -69,7 +69,7 @@ Dieses ZIP kann im WordPress-Plugin-Installer als echtes Update eingespielt werd
 
 Das Plugin ist in kleine Klassen mit klaren Verantwortlichkeiten aufgeteilt:
 
-- `wp_restatify-booking-assistant.php`
+- `wp_restatify-booking.php`
 	Bootstrap-Datei: laedt Klassen, startet Plugin, behaelt optionale KI-Helper-Funktion.
 - `includes/class-restatify-booking-assistant-plugin.php`
 	Composition Root: verdrahtet Services und registriert alle WordPress-Hooks.

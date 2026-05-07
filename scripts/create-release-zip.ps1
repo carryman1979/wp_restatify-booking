@@ -7,14 +7,14 @@ $ErrorActionPreference = 'Stop'
 $pluginRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $pluginRoot
 
-$pluginMainFile = Join-Path $pluginRoot 'wp_restatify-booking-assistant.php'
+$pluginMainFile = Join-Path $pluginRoot 'wp_restatify-booking.php'
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $pluginHeader = Get-Content $pluginMainFile -Raw
     $versionMatch = [regex]::Match($pluginHeader, 'Version:\s*([^\r\n]+)')
 
     if (-not $versionMatch.Success) {
-        throw 'Could not detect plugin version from wp_restatify-booking-assistant.php'
+        throw 'Could not detect plugin version from wp_restatify-booking.php'
     }
 
     $Version = $versionMatch.Groups[1].Value.Trim()

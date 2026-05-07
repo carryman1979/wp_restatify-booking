@@ -846,7 +846,7 @@ HTML;
         }
 
         private function get_placeholder_logo_url(): string {
-            return plugins_url('assets/mail-logo-placeholder.svg', dirname(__DIR__) . '/wp_restatify-booking-assistant.php');
+            return plugins_url('assets/mail-logo-placeholder.svg', dirname(__DIR__) . '/wp_restatify-booking.php');
         }
 
     /**

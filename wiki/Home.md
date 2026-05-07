@@ -1,5 +1,9 @@
 # Restatify Booking Assistant
 
+Produktname (ab 2.0.0): Restatify-Booking  
+WordPress-Slug (ab 2.0.0): wp_restatify-booking  
+Website: https://www.restatify.tech
+
 Der Restatify Booking Assistant verbindet WordPress mit der Restatify Booking API und stellt eine geführte Terminbuchung direkt auf der Website bereit.
 
 Das Plugin ist dafür ausgelegt, freie Termine aus der API zu suchen, Reservierungen anzulegen, Bestätigungs- und Stornomails zu versenden und die Konfiguration in WordPress möglichst wartbar abzubilden.

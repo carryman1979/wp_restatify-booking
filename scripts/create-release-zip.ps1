@@ -36,11 +36,24 @@ $excludeNames = @(
     '.git',
     '.github',
     'node_modules',
+    'vendor',
+    'tests',
+    'wiki',
+    'scripts',
     '.release-tmp',
     'release'
 )
 
-Get-ChildItem -Path $pluginRoot -Force | Where-Object { $excludeNames -notcontains $_.Name } | ForEach-Object {
+$excludeFiles = @(
+    'composer.json',
+    'composer.lock',
+    'phpunit.xml.dist',
+    'AGENTS.md'
+)
+
+Get-ChildItem -Path $pluginRoot -Force | Where-Object {
+    $excludeNames -notcontains $_.Name -and $excludeFiles -notcontains $_.Name
+} | ForEach-Object {
     Copy-Item $_.FullName -Destination $stagingDir -Recurse -Force
 }
 

@@ -109,6 +109,23 @@ final class Restatify_Booking_Assistant_Api_Client {
             return trim($body['message']);
         }
 
+        if (isset($body['detail']) && is_array($body['detail'])) {
+            $structured = $body['detail'];
+            $code = isset($structured['code']) && is_string($structured['code']) ? trim($structured['code']) : '';
+            $message = isset($structured['message']) && is_string($structured['message']) ? trim($structured['message']) : '';
+
+            if ($message !== '') {
+                return $message;
+            }
+
+            if ($code !== '' && class_exists('\\Restatify\\Shared\\Contracts\\BookingApiErrorCodes', false)) {
+                $mapped = \Restatify\Shared\Contracts\BookingApiErrorCodes::defaultMessageForCode($code);
+                if ($mapped !== '') {
+                    return $mapped;
+                }
+            }
+        }
+
         return $this->flatten_error_detail($body['detail'] ?? null);
     }
 

@@ -192,6 +192,24 @@ final class Restatify_Booking_Assistant_Booking_Controller {
 
         $max_requests = $action === 'reserve_slot' ? $max_reserve : $max_find;
 
+        if (class_exists('\\Restatify\\Shared\\Runtime\\RateLimiter', false)) {
+            $allowed = \Restatify\Shared\Runtime\RateLimiter::hit(
+                'restatify_booking_rl_',
+                $action,
+                $window,
+                $max_requests
+            );
+
+            if (!$allowed) {
+                wp_send_json_error(
+                    ['message' => __('Too many requests. Please wait a moment and try again.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)],
+                    429
+                );
+            }
+
+            return;
+        }
+
         $ip = $this->get_client_ip();
         $ua = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field((string) wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
         $fingerprint = md5($ip . '|' . $ua . '|' . $action);

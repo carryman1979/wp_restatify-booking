@@ -36,23 +36,22 @@ final class Restatify_Booking_Assistant_Autoresponder {
         $start_iso = $this->format_iso_for_mail((string) ($reservation['start_iso'] ?? ''), $timezone);
         $end_iso = $this->format_iso_for_mail((string) ($reservation['end_iso'] ?? ''), $timezone);
 
-        $search = ['{name}', '{email}', '{subject}', '{start}', '{end}', '{timezone}', '{note}', '{reference}', '{contact_method}', '{contact_value}', '{contact_detail}', '{cancellation_url}', '{site_name}', '{cancellation_reason}', '{cancellation_message}'];
-        $replace = [
-            $name,
-            $email,
-            $subject_line,
-            $start_iso,
-            $end_iso,
-            $timezone,
-            $note,
-            (string) ($reservation['reference'] ?? ''),
-            $contact_method,
-            $contact_value,
-            $contact_detail,
-            $cancellation_url,
-            wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES),
-            '',
-            '',
+        $replacements = [
+            'name' => $name,
+            'email' => $email,
+            'subject' => $subject_line,
+            'start' => $start_iso,
+            'end' => $end_iso,
+            'timezone' => $timezone,
+            'note' => $note,
+            'reference' => (string) ($reservation['reference'] ?? ''),
+            'contact_method' => $contact_method,
+            'contact_value' => $contact_value,
+            'contact_detail' => $contact_detail,
+            'cancellation_url' => $cancellation_url,
+            'site_name' => wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES),
+            'cancellation_reason' => '',
+            'cancellation_message' => '',
         ];
 
         $attachment = $this->build_ics_attachment($reservation, $name, $email, $subject_line, $timezone, $note, $contact_method, $contact_detail);
@@ -64,9 +63,9 @@ final class Restatify_Booking_Assistant_Autoresponder {
         if (!empty($options['autoresponder_enabled'])) {
             $this->send_configured_mail(
                 [$email],
-                str_replace($search, $replace, (string) $options['autoresponder_subject']),
-                str_replace($search, $replace, (string) $options['autoresponder_body']),
-                str_replace($search, $replace, (string) ($options['autoresponder_html_body'] ?? '')),
+                $this->render_template((string) $options['autoresponder_subject'], $replacements),
+                $this->render_template((string) $options['autoresponder_body'], $replacements),
+                $this->render_template((string) ($options['autoresponder_html_body'] ?? ''), $replacements),
                 !empty($options['autoresponder_html_enabled']),
                 $attachments
             );
@@ -77,9 +76,9 @@ final class Restatify_Booking_Assistant_Autoresponder {
             if (count($owner_recipients) > 0) {
                 $this->send_configured_mail(
                     $owner_recipients,
-                    str_replace($search, $replace, (string) ($options['owner_notification_subject'] ?? '')),
-                    str_replace($search, $replace, (string) ($options['owner_notification_body'] ?? '')),
-                    str_replace($search, $replace, (string) ($options['owner_notification_html_body'] ?? '')),
+                    $this->render_template((string) ($options['owner_notification_subject'] ?? ''), $replacements),
+                    $this->render_template((string) ($options['owner_notification_body'] ?? ''), $replacements),
+                    $this->render_template((string) ($options['owner_notification_html_body'] ?? ''), $replacements),
                     !empty($options['owner_notification_html_enabled']),
                     []
                 );
@@ -108,30 +107,29 @@ final class Restatify_Booking_Assistant_Autoresponder {
         }
 
         $timezone = (string) ($reservation['timezone'] ?? ($options['default_timezone'] ?? 'Europe/Berlin'));
-        $search = ['{name}', '{email}', '{subject}', '{start}', '{end}', '{timezone}', '{note}', '{reference}', '{contact_method}', '{contact_value}', '{contact_detail}', '{cancellation_url}', '{cancellation_reason}', '{cancellation_message}', '{site_name}'];
-        $replace = [
-            (string) ($reservation['name'] ?? ''),
-            $email,
-            '',
-            $this->format_iso_for_mail((string) ($reservation['start_iso'] ?? ''), $timezone),
-            $this->format_iso_for_mail((string) ($reservation['end_iso'] ?? ''), $timezone),
-            $timezone,
-            '',
-            (string) ($reservation['reference'] ?? ''),
-            '',
-            '',
-            '',
-            '',
-            $reason,
-            $message,
-            wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES),
+        $replacements = [
+            'name' => (string) ($reservation['name'] ?? ''),
+            'email' => $email,
+            'subject' => '',
+            'start' => $this->format_iso_for_mail((string) ($reservation['start_iso'] ?? ''), $timezone),
+            'end' => $this->format_iso_for_mail((string) ($reservation['end_iso'] ?? ''), $timezone),
+            'timezone' => $timezone,
+            'note' => '',
+            'reference' => (string) ($reservation['reference'] ?? ''),
+            'contact_method' => '',
+            'contact_value' => '',
+            'contact_detail' => '',
+            'cancellation_url' => '',
+            'cancellation_reason' => $reason,
+            'cancellation_message' => $message,
+            'site_name' => wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES),
         ];
 
         $this->send_configured_mail(
             [$email],
-            str_replace($search, $replace, (string) ($options['cancellation_confirmation_subject'] ?? '')),
-            str_replace($search, $replace, (string) ($options['cancellation_confirmation_body'] ?? '')),
-            str_replace($search, $replace, (string) ($options['cancellation_confirmation_html_body'] ?? '')),
+            $this->render_template((string) ($options['cancellation_confirmation_subject'] ?? ''), $replacements),
+            $this->render_template((string) ($options['cancellation_confirmation_body'] ?? ''), $replacements),
+            $this->render_template((string) ($options['cancellation_confirmation_html_body'] ?? ''), $replacements),
             !empty($options['cancellation_confirmation_html_enabled']),
             []
         );
@@ -155,30 +153,29 @@ final class Restatify_Booking_Assistant_Autoresponder {
 
         $timezone = (string) ($reservation['timezone'] ?? ($options['default_timezone'] ?? 'Europe/Berlin'));
         $email = sanitize_email((string) ($reservation['email'] ?? ''));
-        $search = ['{name}', '{email}', '{subject}', '{start}', '{end}', '{timezone}', '{note}', '{reference}', '{contact_method}', '{contact_value}', '{contact_detail}', '{cancellation_url}', '{cancellation_reason}', '{cancellation_message}', '{site_name}'];
-        $replace = [
-            (string) ($reservation['name'] ?? ''),
-            $email,
-            '',
-            $this->format_iso_for_mail((string) ($reservation['start_iso'] ?? ''), $timezone),
-            $this->format_iso_for_mail((string) ($reservation['end_iso'] ?? ''), $timezone),
-            $timezone,
-            '',
-            (string) ($reservation['reference'] ?? ''),
-            '',
-            '',
-            '',
-            '',
-            $reason,
-            $message,
-            wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES),
+        $replacements = [
+            'name' => (string) ($reservation['name'] ?? ''),
+            'email' => $email,
+            'subject' => '',
+            'start' => $this->format_iso_for_mail((string) ($reservation['start_iso'] ?? ''), $timezone),
+            'end' => $this->format_iso_for_mail((string) ($reservation['end_iso'] ?? ''), $timezone),
+            'timezone' => $timezone,
+            'note' => '',
+            'reference' => (string) ($reservation['reference'] ?? ''),
+            'contact_method' => '',
+            'contact_value' => '',
+            'contact_detail' => '',
+            'cancellation_url' => '',
+            'cancellation_reason' => $reason,
+            'cancellation_message' => $message,
+            'site_name' => wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES),
         ];
 
         $this->send_configured_mail(
             $owner_recipients,
-            str_replace($search, $replace, (string) ($options['owner_cancellation_subject'] ?? '')),
-            str_replace($search, $replace, (string) ($options['owner_cancellation_body'] ?? '')),
-            str_replace($search, $replace, (string) ($options['owner_cancellation_html_body'] ?? '')),
+            $this->render_template((string) ($options['owner_cancellation_subject'] ?? ''), $replacements),
+            $this->render_template((string) ($options['owner_cancellation_body'] ?? ''), $replacements),
+            $this->render_template((string) ($options['owner_cancellation_html_body'] ?? ''), $replacements),
             !empty($options['owner_cancellation_html_enabled']),
             []
         );
@@ -198,6 +195,22 @@ final class Restatify_Booking_Assistant_Autoresponder {
         $html_body = trim($html_body);
 
         if ($subject === '' || ($text_body === '' && $html_body === '')) {
+            return;
+        }
+
+        if (class_exists('\\Restatify\\Shared\\Mail\\MailDispatcher', false)) {
+            \Restatify\Shared\Mail\MailDispatcher::send(
+                $recipients,
+                $subject,
+                $html_body,
+                $text_body,
+                $html_enabled,
+                [],
+                $attachments,
+                $this->get_mail_from_address(),
+                wp_specialchars_decode((string) get_bloginfo('name'), ENT_QUOTES)
+            );
+
             return;
         }
 
@@ -231,6 +244,24 @@ final class Restatify_Booking_Assistant_Autoresponder {
         remove_action('phpmailer_init', $callback);
         remove_filter('wp_mail_from', $from_callback);
         remove_filter('wp_mail_from_name', $from_name_callback);
+    }
+
+    /**
+     * @param array<string,string> $replacements
+     */
+    private function render_template(string $template, array $replacements): string {
+        if (class_exists('\\Restatify\\Shared\\Util\\TokenReplacer', false)) {
+            return \Restatify\Shared\Util\TokenReplacer::replace($template, $replacements);
+        }
+
+        $search = [];
+        $replace = [];
+        foreach ($replacements as $token => $value) {
+            $search[] = '{' . $token . '}';
+            $replace[] = (string) $value;
+        }
+
+        return str_replace($search, $replace, $template);
     }
 
     private function get_mail_from_address(): string {

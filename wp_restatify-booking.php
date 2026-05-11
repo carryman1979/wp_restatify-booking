@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 2.0.1
+ * Version: 2.0.2
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -12,8 +12,36 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-if (!defined('RESTATIFY_BOOKING_OPEN_TOKEN')) {
-    define('RESTATIFY_BOOKING_OPEN_TOKEN', '[[RESTATIFY_BOOKING_OPEN]]');
+if (!defined('RESTATIFY_BOOKING_SHARED_VERSION')) {
+    define('RESTATIFY_BOOKING_SHARED_VERSION', '1.0.0');
+}
+
+$restatify_booking_require_first = static function (array $paths): bool {
+    foreach ($paths as $path) {
+        if (is_string($path) && $path !== '' && file_exists($path)) {
+            require_once $path;
+            return true;
+        }
+    }
+
+    return false;
+};
+
+$restatify_booking_require_first([
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/SharedRegistry.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingChatTokens.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingApiErrorCodes.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/PluginState.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/BootstrapGuard.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/RateLimiter.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/TokenReplacer.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Mail/MailDispatcher.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Mail/PlaceholderCatalog.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/I18n/PolylangAdapter.php',
+]);
+
+if (class_exists('\\Restatify\\Shared\\Contracts\\BookingChatTokens', false)) {
+    \Restatify\Shared\Contracts\BookingChatTokens::defineGlobalConstants();
 }
 
 if (class_exists('Restatify_Booking_Assistant_Plugin', false)) {
@@ -26,42 +54,13 @@ $restatify_booking_legacy_basenames = [
 ];
 
 $restatify_booking_skip_bootstrap_for_request = false;
-
-$active_plugins = get_option('active_plugins', []);
-if (is_array($active_plugins)) {
-    $filtered_plugins = array_values(array_filter(
-        $active_plugins,
-        static function ($plugin) use ($restatify_booking_legacy_basenames) {
-            return !in_array((string) $plugin, $restatify_booking_legacy_basenames, true);
-        }
-    ));
-
-    if (count($filtered_plugins) !== count($active_plugins)) {
-        update_option('active_plugins', $filtered_plugins);
-        set_transient('restatify_booking_assistant_admin_notice', [
-            'type' => 'warning',
-            'message' => __('Legacy booking plugin wurde automatisch deaktiviert, um Klassenkonflikte mit Restatify Booking zu vermeiden.', 'restatify-booking-assistant'),
-        ], 300);
-        $restatify_booking_skip_bootstrap_for_request = true;
-    }
-}
-
-if (is_multisite()) {
-    $sitewide_plugins = get_site_option('active_sitewide_plugins', []);
-    if (is_array($sitewide_plugins)) {
-        $sitewide_changed = false;
-        foreach ($restatify_booking_legacy_basenames as $legacy_basename) {
-            if (isset($sitewide_plugins[$legacy_basename])) {
-                unset($sitewide_plugins[$legacy_basename]);
-                $sitewide_changed = true;
-            }
-        }
-
-        if ($sitewide_changed) {
-            update_site_option('active_sitewide_plugins', $sitewide_plugins);
-            $restatify_booking_skip_bootstrap_for_request = true;
-        }
-    }
+if (class_exists('\\Restatify\\Shared\\Runtime\\BootstrapGuard', false)) {
+    $restatify_booking_skip_bootstrap_for_request = \Restatify\Shared\Runtime\BootstrapGuard::deactivateLegacyAndMaybeNotify(
+        $restatify_booking_legacy_basenames,
+        'restatify_booking_assistant_admin_notice',
+        'Legacy booking plugin wurde automatisch deaktiviert, um Klassenkonflikte mit Restatify Booking zu vermeiden.',
+        'restatify-booking-assistant'
+    );
 }
 
 if ($restatify_booking_skip_bootstrap_for_request) {
@@ -69,9 +68,46 @@ if ($restatify_booking_skip_bootstrap_for_request) {
 }
 
 require_once __DIR__ . '/includes/class-restatify-booking-assistant-constants.php';
-$migration_notice_manager_file = __DIR__ . '/includes/class-restatify-shared-migration-notice-manager.php';
-if (file_exists($migration_notice_manager_file)) {
-    require_once $migration_notice_manager_file;
+
+$restatify_booking_shared_component = 'migration_notice_manager';
+$restatify_booking_shared_manager_class = null;
+
+if (class_exists('\\Restatify\\Shared\\SharedRegistry', false)) {
+    $registered_payload = \Restatify\Shared\SharedRegistry::get(
+        $restatify_booking_shared_component,
+        RESTATIFY_BOOKING_SHARED_VERSION
+    );
+
+    if (is_array($registered_payload)) {
+        $registered_class = (string) ($registered_payload['class'] ?? '');
+        if ($registered_class !== '' && class_exists($registered_class, false)) {
+            $restatify_booking_shared_manager_class = $registered_class;
+        }
+    }
+
+    if ($restatify_booking_shared_manager_class === null) {
+        $restatify_booking_require_first([
+            dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Migration/MigrationNoticeManager.php',
+        ]);
+
+        if (class_exists('\\Restatify\\Shared\\Migration\\MigrationNoticeManager', false)) {
+            $restatify_booking_shared_manager_class = '\\Restatify\\Shared\\Migration\\MigrationNoticeManager';
+            \Restatify\Shared\SharedRegistry::register(
+                $restatify_booking_shared_component,
+                RESTATIFY_BOOKING_SHARED_VERSION,
+                [ 'class' => $restatify_booking_shared_manager_class ]
+            );
+        }
+    }
+}
+
+if (
+    is_string($restatify_booking_shared_manager_class)
+    && $restatify_booking_shared_manager_class !== ''
+    && class_exists($restatify_booking_shared_manager_class, false)
+    && !class_exists('Restatify_Shared_Migration_Notice_Manager', false)
+) {
+    class_alias($restatify_booking_shared_manager_class, 'Restatify_Shared_Migration_Notice_Manager');
 }
 
 if (!class_exists('Restatify_Shared_Migration_Notice_Manager', false)) {

@@ -171,7 +171,7 @@ final class Restatify_Booking_Assistant_UI {
         }
 
         $options = $this->options_service->get_options();
-        $shared_mail_editor_url = esc_url(home_url('/wp_restatify-shared/src/js/mail-template-editor.js'));
+        $shared_mail_editor_url = $this->resolve_shared_mail_editor_url();
         $calendar_sources = is_array($options['api_calendar_sources'] ?? null) ? $options['api_calendar_sources'] : [];
         if (count($calendar_sources) === 0) {
             $calendar_sources = $this->options_service->parse_calendar_sources_raw((string) ($options['api_calendar_sources_raw'] ?? ''));
@@ -358,7 +358,9 @@ final class Restatify_Booking_Assistant_UI {
         }
         ?>
         <div class="wrap">
-            <script src="<?php echo $shared_mail_editor_url; ?>"></script>
+            <?php if ($shared_mail_editor_url !== '') : ?>
+                <script src="<?php echo esc_url($shared_mail_editor_url); ?>"></script>
+            <?php endif; ?>
             <style>
                 .wrap .rs-admin-grid {
                     display: grid;
@@ -1614,6 +1616,25 @@ final class Restatify_Booking_Assistant_UI {
 
         return in_array('wp-maintenance-mode/wp-maintenance-mode.php', $active_plugins, true)
             || isset($network_plugins['wp-maintenance-mode/wp-maintenance-mode.php']);
+    }
+
+    /**
+     * Resolve shared mail editor script URL only when the file exists.
+     */
+    private function resolve_shared_mail_editor_url(): string {
+        $candidates = [
+            '/wp_restatify-shared/src/js/mail-template-editor.js',
+            '/wp-content/wp_restatify-shared/src/js/mail-template-editor.js',
+        ];
+
+        foreach ($candidates as $relative_url) {
+            $absolute_path = untrailingslashit((string) ABSPATH) . str_replace('/', DIRECTORY_SEPARATOR, $relative_url);
+            if (file_exists($absolute_path)) {
+                return home_url($relative_url);
+            }
+        }
+
+        return '';
     }
 
     /**

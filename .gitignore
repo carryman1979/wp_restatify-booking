@@ -16,3 +16,7 @@ Desktop.ini
 *.log
 *.tmp
 *.temp
+
+# PHP test artifacts
+vendor/
+.phpunit.cache/

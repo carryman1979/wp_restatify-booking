@@ -7,7 +7,7 @@ Company: https://www.restatify.tech
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 2.0.1
+Version: 2.0.2
 
 ## Features
 
@@ -152,6 +152,12 @@ Woechentliche Verfuegbarkeitszeilen:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 2.0.2
+
+- Added PHP unit-test baseline and test runner hardening (`@php vendor/bin/phpunit`) for Windows/CI shells without global `php` in PATH.
+- Added repository-level AGENTS and Copilot instruction files linked to centralized shared guidelines.
+- Updated release docs and wiki index for the current maintenance release.
 
 ### 1.3.3
 

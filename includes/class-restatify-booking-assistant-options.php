@@ -31,95 +31,40 @@ final class Restatify_Booking_Assistant_Options {
      * Registers translatable option strings for Polylang, if available.
      */
     public function register_polylang_strings(): void {
-        if (!function_exists('pll_register_string')) {
+        if (!function_exists('pll_register_string') && !class_exists('\\Restatify\\Shared\\I18n\\PolylangAdapter', false)) {
             return;
         }
 
         $options = $this->get_options();
 
-        pll_register_string(
-            'Booking autoresponder subject',
-            (string) ($options['autoresponder_subject'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            false
-        );
+        $register = static function (string $name, string $value, bool $multiline): void {
+            if (class_exists('\\Restatify\\Shared\\I18n\\PolylangAdapter', false)) {
+                \Restatify\Shared\I18n\PolylangAdapter::register(
+                    $name,
+                    $value,
+                    Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
+                    $multiline
+                );
+                return;
+            }
 
-        pll_register_string(
-            'Booking autoresponder body',
-            (string) ($options['autoresponder_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
+            if ($value !== '' && function_exists('pll_register_string')) {
+                pll_register_string($name, $value, Restatify_Booking_Assistant_Constants::POLYLANG_GROUP, $multiline);
+            }
+        };
 
-        pll_register_string(
-            'Booking autoresponder HTML body',
-            (string) ($options['autoresponder_html_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
-
-        pll_register_string(
-            'Booking owner notification subject',
-            (string) ($options['owner_notification_subject'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            false
-        );
-
-        pll_register_string(
-            'Booking owner notification text body',
-            (string) ($options['owner_notification_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
-
-        pll_register_string(
-            'Booking owner notification HTML body',
-            (string) ($options['owner_notification_html_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
-
-        pll_register_string(
-            'Booking cancellation confirmation subject',
-            (string) ($options['cancellation_confirmation_subject'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            false
-        );
-
-        pll_register_string(
-            'Booking cancellation confirmation text body',
-            (string) ($options['cancellation_confirmation_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
-
-        pll_register_string(
-            'Booking cancellation confirmation HTML body',
-            (string) ($options['cancellation_confirmation_html_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
-
-        pll_register_string(
-            'Booking owner cancellation subject',
-            (string) ($options['owner_cancellation_subject'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            false
-        );
-
-        pll_register_string(
-            'Booking owner cancellation text body',
-            (string) ($options['owner_cancellation_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
-
-        pll_register_string(
-            'Booking owner cancellation HTML body',
-            (string) ($options['owner_cancellation_html_body'] ?? ''),
-            Restatify_Booking_Assistant_Constants::POLYLANG_GROUP,
-            true
-        );
+        $register('Booking autoresponder subject', (string) ($options['autoresponder_subject'] ?? ''), false);
+        $register('Booking autoresponder body', (string) ($options['autoresponder_body'] ?? ''), true);
+        $register('Booking autoresponder HTML body', (string) ($options['autoresponder_html_body'] ?? ''), true);
+        $register('Booking owner notification subject', (string) ($options['owner_notification_subject'] ?? ''), false);
+        $register('Booking owner notification text body', (string) ($options['owner_notification_body'] ?? ''), true);
+        $register('Booking owner notification HTML body', (string) ($options['owner_notification_html_body'] ?? ''), true);
+        $register('Booking cancellation confirmation subject', (string) ($options['cancellation_confirmation_subject'] ?? ''), false);
+        $register('Booking cancellation confirmation text body', (string) ($options['cancellation_confirmation_body'] ?? ''), true);
+        $register('Booking cancellation confirmation HTML body', (string) ($options['cancellation_confirmation_html_body'] ?? ''), true);
+        $register('Booking owner cancellation subject', (string) ($options['owner_cancellation_subject'] ?? ''), false);
+        $register('Booking owner cancellation text body', (string) ($options['owner_cancellation_body'] ?? ''), true);
+        $register('Booking owner cancellation HTML body', (string) ($options['owner_cancellation_html_body'] ?? ''), true);
     }
 
     /**
@@ -1065,6 +1010,10 @@ HTML;
         $value = trim($value);
         if ($value === '') {
             return '';
+        }
+
+        if (class_exists('\\Restatify\\Shared\\I18n\\PolylangAdapter', false)) {
+            return \Restatify\Shared\I18n\PolylangAdapter::translate($value);
         }
 
         if (function_exists('pll__')) {

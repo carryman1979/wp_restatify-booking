@@ -171,6 +171,7 @@ final class Restatify_Booking_Assistant_UI {
         }
 
         $options = $this->options_service->get_options();
+        $shared_mail_editor_url = esc_url(home_url('/wp_restatify-shared/src/js/mail-template-editor.js'));
         $calendar_sources = is_array($options['api_calendar_sources'] ?? null) ? $options['api_calendar_sources'] : [];
         if (count($calendar_sources) === 0) {
             $calendar_sources = $this->options_service->parse_calendar_sources_raw((string) ($options['api_calendar_sources_raw'] ?? ''));
@@ -215,23 +216,25 @@ final class Restatify_Booking_Assistant_UI {
             }
             $availability_by_weekday[$weekday] = is_array($rule['windows'] ?? null) ? $rule['windows'] : [];
         }
-        $mail_placeholders = [
-            '{name}',
-            '{email}',
-            '{site_name}',
-            '{subject}',
-            '{start}',
-            '{end}',
-            '{timezone}',
-            '{note}',
-            '{reference}',
-            '{contact_method}',
-            '{contact_value}',
-            '{contact_detail}',
-            '{cancellation_url}',
-            '{cancellation_reason}',
-            '{cancellation_message}',
-        ];
+        $mail_placeholders = class_exists('\\Restatify\\Shared\\Mail\\PlaceholderCatalog', false)
+            ? \Restatify\Shared\Mail\PlaceholderCatalog::bookingMail()
+            : [
+                '{name}',
+                '{email}',
+                '{site_name}',
+                '{subject}',
+                '{start}',
+                '{end}',
+                '{timezone}',
+                '{note}',
+                '{reference}',
+                '{contact_method}',
+                '{contact_value}',
+                '{contact_detail}',
+                '{cancellation_url}',
+                '{cancellation_reason}',
+                '{cancellation_message}',
+            ];
         $mail_template_modals = [
             [
                 'modal_id' => 'autoresponder',
@@ -355,6 +358,7 @@ final class Restatify_Booking_Assistant_UI {
         }
         ?>
         <div class="wrap">
+            <script src="<?php echo $shared_mail_editor_url; ?>"></script>
             <style>
                 .wrap .rs-admin-grid {
                     display: grid;
@@ -612,6 +616,23 @@ final class Restatify_Booking_Assistant_UI {
 
                 .wrap .rs-mail-modal__field .description {
                     margin-top: 6px;
+                }
+
+                .wrap .rs-mail-template-tabs {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    margin-bottom: 12px;
+                }
+
+                .wrap .rs-mail-template-tabs .button.is-active {
+                    background: #2271b1;
+                    border-color: #2271b1;
+                    color: #fff;
+                }
+
+                .wrap .rs-mail-template-panel[hidden] {
+                    display: none !important;
                 }
 
                 .wrap .rs-mail-modal__checks {
@@ -1173,27 +1194,7 @@ final class Restatify_Booking_Assistant_UI {
                         syncDayState();
                     });
 
-                    const insertAtCursor = (field, value) => {
-                        const start = typeof field.selectionStart === 'number' ? field.selectionStart : field.value.length;
-                        const end = typeof field.selectionEnd === 'number' ? field.selectionEnd : field.value.length;
-                        field.value = field.value.slice(0, start) + value + field.value.slice(end);
-                        const nextPos = start + value.length;
-                        field.focus();
-                        if (typeof field.setSelectionRange === 'function') {
-                            field.setSelectionRange(nextPos, nextPos);
-                        }
-                        field.dispatchEvent(new Event('input', { bubbles: true }));
-                        field.dispatchEvent(new Event('change', { bubbles: true }));
-                    };
-
-                    let lastFocusedField = null;
-
-                    document.addEventListener('focusin', (event) => {
-                        const target = event.target;
-                        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-                            lastFocusedField = target;
-                        }
-                    });
+                    const sharedMailEditor = window.RestatifySharedMailEditor || null;
 
                     const ensureEditor = (textarea) => {
                         if (!(textarea instanceof HTMLTextAreaElement) || textarea.dataset.rsEditorInitialized === '1') {
@@ -1230,6 +1231,13 @@ final class Restatify_Booking_Assistant_UI {
                                     modal.dataset.rsActiveEditorId = textarea.id;
                                 }
                             });
+
+                            editor.on('change keyup SetContent', () => {
+                                const codeMirror = document.querySelector('[data-rs-mail-html-code-for="' + textarea.id + '"]');
+                                if (codeMirror instanceof HTMLTextAreaElement) {
+                                    codeMirror.value = editor.getContent() || '';
+                                }
+                            });
                         };
 
                         window.requestAnimationFrame(bindEditor);
@@ -1254,6 +1262,16 @@ final class Restatify_Booking_Assistant_UI {
                         modal.hidden = false;
                         document.body.classList.add('rs-mail-modal-open');
                         modal.querySelectorAll('[data-rs-mail-html-editor]').forEach((field) => ensureEditor(field));
+                        modal.querySelectorAll('[data-rs-mail-html-code-for]').forEach((field) => {
+                            if (!(field instanceof HTMLTextAreaElement)) {
+                                return;
+                            }
+                            const editorId = field.getAttribute('data-rs-mail-html-code-for') || '';
+                            const editorField = modal.querySelector('#' + editorId);
+                            if (editorField instanceof HTMLTextAreaElement) {
+                                field.value = editorField.value || '';
+                            }
+                        });
                         const firstFocusable = modal.querySelector('input, textarea, button, select');
                         if (firstFocusable instanceof HTMLElement) {
                             firstFocusable.focus();
@@ -1295,43 +1313,44 @@ final class Restatify_Booking_Assistant_UI {
                         }
                     });
 
-                    document.addEventListener('click', (event) => {
-                        const target = event.target;
-                        if (!(target instanceof HTMLElement) || !target.matches('[data-rs-insert-placeholder]')) {
-                            return;
-                        }
-
-                        event.preventDefault();
-                        const value = target.getAttribute('data-rs-insert-placeholder') || '';
-                        const modal = target.closest('[data-rs-mail-modal]');
-                        const activeEditorId = modal instanceof HTMLElement ? (modal.dataset.rsActiveEditorId || '') : '';
-
-                        if (activeEditorId && window.tinymce && typeof window.tinymce.get === 'function') {
-                            const editor = window.tinymce.get(activeEditorId);
-                            if (editor && !editor.isHidden()) {
-                                editor.focus();
-                                editor.insertContent(value);
-                                return;
+                    if (sharedMailEditor && typeof sharedMailEditor.initTabSystem === 'function') {
+                        sharedMailEditor.initTabSystem({
+                            tabSelector: '[data-rs-mail-tab]',
+                            panelSelector: '[data-rs-mail-tab-panel]',
+                            tabGroupAttr: 'data-rs-mail-tab',
+                            panelGroupAttr: 'data-rs-mail-tab-panel',
+                            panelAttr: 'data-rs-mail-panel',
+                            activeClass: 'is-active',
+                            onSwitch: function (group, panel) {
+                                if (panel === 'code' && typeof sharedMailEditor.syncCodeFromEditor === 'function') {
+                                    sharedMailEditor.syncCodeFromEditor(group, '[data-rs-mail-html-code-for]', 'data-rs-mail-html-code-for');
+                                }
                             }
-                        }
+                        });
+                    }
 
-                        if (window.tinymce && window.tinymce.activeEditor && !window.tinymce.activeEditor.isHidden()) {
-                            const editor = window.tinymce.activeEditor;
-                            editor.focus();
-                            editor.insertContent(value);
-                            return;
-                        }
+                    if (sharedMailEditor && typeof sharedMailEditor.bindHtmlCodeSync === 'function') {
+                        sharedMailEditor.bindHtmlCodeSync({
+                            codeSelector: '[data-rs-mail-html-code-for]',
+                            codeForAttr: 'data-rs-mail-html-code-for'
+                        });
+                    }
 
-                        if (lastFocusedField instanceof HTMLInputElement || lastFocusedField instanceof HTMLTextAreaElement) {
-                            insertAtCursor(lastFocusedField, value);
-                            return;
-                        }
-
-                        const quicktagsField = document.querySelector('.wp-editor-area:focus');
-                        if (quicktagsField instanceof HTMLTextAreaElement) {
-                            insertAtCursor(quicktagsField, value);
-                        }
-                    });
+                    if (sharedMailEditor && typeof sharedMailEditor.initPlaceholderButtons === 'function') {
+                        sharedMailEditor.initPlaceholderButtons({
+                            buttonSelector: '[data-rs-insert-placeholder]',
+                            placeholderAttr: 'data-rs-insert-placeholder',
+                            activeEditorIdResolver: function (button) {
+                                const modal = button.closest('[data-rs-mail-modal]');
+                                return modal instanceof HTMLElement ? (modal.dataset.rsActiveEditorId || '') : '';
+                            },
+                            onAfterEditorInsert: function (editorId) {
+                                if (typeof sharedMailEditor.syncCodeFromEditor === 'function') {
+                                    sharedMailEditor.syncCodeFromEditor(editorId, '[data-rs-mail-html-code-for]', 'data-rs-mail-html-code-for');
+                                }
+                            }
+                        });
+                    }
                 })();
             </script>
 
@@ -1418,6 +1437,7 @@ final class Restatify_Booking_Assistant_UI {
         $text_key = (string) ($section['text_key'] ?? '');
         $html_key = (string) ($section['html_key'] ?? '');
         $html_editor_id = (string) ($section['html_editor_id'] ?? '');
+        $tab_group = $html_editor_id !== '' ? $html_editor_id : $text_key;
         ?>
         <section class="rs-mail-modal__section">
             <h3><?php echo esc_html((string) ($section['title'] ?? '')); ?></h3>
@@ -1435,23 +1455,46 @@ final class Restatify_Booking_Assistant_UI {
                 </div>
             <?php endif; ?>
 
-            <?php if ($text_key !== '') : ?>
-                <div class="rs-mail-modal__field">
-                    <label for="<?php echo esc_attr($text_key); ?>"><?php esc_html_e('Text-Version', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></label>
-                    <textarea class="large-text code" id="<?php echo esc_attr($text_key); ?>" rows="8" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[<?php echo esc_attr($text_key); ?>]"><?php echo esc_textarea((string) ($options[$text_key] ?? '')); ?></textarea>
-                    <?php if (!empty($section['text_help'])) : ?>
-                        <p class="description"><?php echo esc_html((string) $section['text_help']); ?></p>
+            <?php if ($tab_group !== '') : ?>
+                <div class="rs-mail-template-tabs">
+                    <?php if ($html_key !== '' && $html_editor_id !== '') : ?>
+                        <button type="button" class="button button-secondary is-active" data-rs-mail-tab="<?php echo esc_attr($tab_group); ?>" data-rs-mail-panel="html"><?php esc_html_e('HTML', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                        <button type="button" class="button button-secondary" data-rs-mail-tab="<?php echo esc_attr($tab_group); ?>" data-rs-mail-panel="code"><?php esc_html_e('Code', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                    <?php endif; ?>
+                    <?php if ($text_key !== '') : ?>
+                        <button type="button" class="button button-secondary<?php echo ($html_key === '' || $html_editor_id === '') ? ' is-active' : ''; ?>" data-rs-mail-tab="<?php echo esc_attr($tab_group); ?>" data-rs-mail-panel="text"><?php esc_html_e('Text', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
 
             <?php if ($html_key !== '' && $html_editor_id !== '') : ?>
-                <div class="rs-mail-modal__field rs-mail-editor-cell">
-                    <span><?php esc_html_e('HTML-Version', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
-                    <textarea class="large-text code rs-mail-html-textarea" id="<?php echo esc_attr($html_editor_id); ?>" rows="12" data-rs-mail-html-editor name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[<?php echo esc_attr($html_key); ?>]"><?php echo esc_textarea((string) ($options[$html_key] ?? '')); ?></textarea>
-                    <?php if (!empty($section['html_help'])) : ?>
-                        <p class="description"><?php echo esc_html((string) $section['html_help']); ?></p>
-                    <?php endif; ?>
+                <div class="rs-mail-template-panel" data-rs-mail-tab-panel="<?php echo esc_attr($tab_group); ?>" data-rs-mail-panel="html">
+                    <div class="rs-mail-modal__field rs-mail-editor-cell">
+                        <span><?php esc_html_e('HTML-Version', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                        <textarea class="large-text code rs-mail-html-textarea" id="<?php echo esc_attr($html_editor_id); ?>" rows="12" data-rs-mail-html-editor name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[<?php echo esc_attr($html_key); ?>]"><?php echo esc_textarea((string) ($options[$html_key] ?? '')); ?></textarea>
+                        <?php if (!empty($section['html_help'])) : ?>
+                            <p class="description"><?php echo esc_html((string) $section['html_help']); ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="rs-mail-template-panel" data-rs-mail-tab-panel="<?php echo esc_attr($tab_group); ?>" data-rs-mail-panel="code" hidden>
+                    <div class="rs-mail-modal__field">
+                        <label for="<?php echo esc_attr($html_editor_id . '_code'); ?>"><?php esc_html_e('Code-Version', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></label>
+                        <textarea class="large-text code" id="<?php echo esc_attr($html_editor_id . '_code'); ?>" rows="12" data-rs-mail-html-code-for="<?php echo esc_attr($html_editor_id); ?>"><?php echo esc_textarea((string) ($options[$html_key] ?? '')); ?></textarea>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($text_key !== '') : ?>
+                <div class="rs-mail-template-panel" data-rs-mail-tab-panel="<?php echo esc_attr($tab_group); ?>" data-rs-mail-panel="text"<?php echo ($html_key !== '' && $html_editor_id !== '') ? ' hidden' : ''; ?>>
+                    <div class="rs-mail-modal__field">
+                        <label for="<?php echo esc_attr($text_key); ?>"><?php esc_html_e('Text-Version', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></label>
+                        <textarea class="large-text code" id="<?php echo esc_attr($text_key); ?>" rows="8" name="<?php echo esc_attr(Restatify_Booking_Assistant_Constants::OPTION_KEY); ?>[<?php echo esc_attr($text_key); ?>]"><?php echo esc_textarea((string) ($options[$text_key] ?? '')); ?></textarea>
+                        <?php if (!empty($section['text_help'])) : ?>
+                            <p class="description"><?php echo esc_html((string) $section['text_help']); ?></p>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endif; ?>
         </section>
@@ -1558,6 +1601,10 @@ final class Restatify_Booking_Assistant_UI {
      * maintenance toggle behavior consistent across installations.
      */
     private function is_lightstart_available(): bool {
+        if (class_exists('\\Restatify\\Shared\\Runtime\\PluginState', false)) {
+            return \Restatify\Shared\Runtime\PluginState::isLightstartAvailable();
+        }
+
         if (!file_exists(WP_PLUGIN_DIR . '/wp-maintenance-mode/wp-maintenance-mode.php')) {
             return false;
         }

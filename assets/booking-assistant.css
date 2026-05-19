@@ -390,6 +390,18 @@
   font-family: var(--rs-booking-font);
 }
 
+.restatify-booking__legal-notice {
+  margin: 0.85rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--rs-booking-muted-text);
+}
+
+.restatify-booking__legal-notice a {
+  color: var(--rs-booking-text);
+  text-decoration: underline;
+}
+
 .restatify-booking__cancel {
   border: 1px solid var(--rs-booking-border);
   border-radius: var(--rs-booking-radius-md);

@@ -6,6 +6,7 @@
 - Composer-Test-Runner auf `@php vendor/bin/phpunit` gehaertet.
 - Zentrale Shared-Guidelines in AGENTS/Copilot-Instructions verlinkt.
 - README/Wiki-Release-Dokumentation aktualisiert.
+- Chat-Handover aus dem Multi-Chat-Plugin dokumentiert: Overlay-Open und Prefill der erkannten Buchungsdaten.
 
 ## Kompatibilitaet
 

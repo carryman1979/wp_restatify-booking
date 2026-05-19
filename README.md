@@ -25,6 +25,7 @@ Version: 2.0.2
 - Autoresponder-E-Mail mit ICS-Anhang
 - Optionale KI-Helper-Funktion fuer Integration mit dem Chat-Overlay-Plugin
 - Optionale Uebergabe von Chat-Ereignissen (bestaetigt/abgebrochen), wenn Multi Chat Overlay installiert ist
+- Direktes Oeffnen des Booking-Overlays aus dem Chat-Flow inklusive Prefill der erkannten Felder
 - Polylang-Registrierung fuer konfigurierbare Autoresponder-Texte
 - CI-freundliches Styling ueber CSS-Variablen und Theme-Farbpresets
 
@@ -32,6 +33,7 @@ Version: 2.0.2
 
 - Funktioniert standalone nur mit der Booking API (Multi Chat Overlay ist optional).
 - Funktioniert mit Multi Chat Overlay fuer chat-ausgeloestes Oeffnen der Buchung und Status-Rueckmeldungen im Chat.
+- Wenn Multi Chat Overlay Session 1 aktiviert, kann das Formular mit den im Chat erkannten Daten vorbelegt werden, sodass Nutzer nur noch pruefen und absenden.
 - Wenn Multi Chat Overlay nicht installiert ist, laeuft der Buchungsablauf normal weiter und Chat-Events werden sicher ignoriert.
 
 ## LightStart-Wartungsmodus (Integration)

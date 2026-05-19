@@ -8,6 +8,8 @@ Der Restatify Booking Assistant verbindet WordPress mit der Restatify Booking AP
 
 Das Plugin ist dafür ausgelegt, freie Termine aus der API zu suchen, Reservierungen anzulegen, Bestätigungs- und Stornomails zu versenden und die Konfiguration in WordPress möglichst wartbar abzubilden.
 
+Besonders wichtig: Wenn das Multi-Chat-Plugin eine Buchungsabsicht erkennt, kann es das Booking-Overlay direkt oeffnen und die bereits gesammelten Daten als Prefill an das Formular uebergeben. Der Besucher muss dann nur noch kontrollieren, ergaenzen und absenden.
+
 ## Kernfunktionen
 
 - Terminbuchung direkt im WordPress-Frontend
@@ -74,9 +76,11 @@ Die jüngsten Änderungen fokussieren sich auf:
 - klarere Konfigurationsstruktur
 - geringere Fehleranfälligkeit bei der Pflege
 - rückwärtskompatible Weiterentwicklung bestehender Optionsformate
+- saubere Chat-zu-Booking-Uebergabe mit Overlay-Open und Prefill aus Session 1
 
 ## Releases
 
+- [Release 2.0.3](Release-2.0.3)
 - [Release 2.0.2](Release-2.0.2)
 - [Release 2.0.0](Release-2.0.0)
 - [Release 1.3.3](Release-1.3.3)

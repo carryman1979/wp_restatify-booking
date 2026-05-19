@@ -6,6 +6,7 @@
 - Hardened Composer test runner to use `@php vendor/bin/phpunit`.
 - Added centralized shared guideline references in AGENTS/Copilot instruction files.
 - Updated README/wiki release documentation.
+- Documented the Multi Chat handover flow that opens the overlay and pre-fills recognized booking data.
 
 ## Compatibility
 

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 2.0.2
+ * Version: 2.0.3
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -30,10 +30,14 @@ $restatify_booking_require_first = static function (array $paths): bool {
 $restatify_booking_require_first([
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/SharedRegistry.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingChatTokens.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingPrefillSchema.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingApiErrorCodes.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/PluginState.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/BootstrapGuard.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/RateLimiter.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/BookingContactMethodsResolver.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/BookingContactChannelProfiles.php',
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/BookingContactChannels.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/TokenReplacer.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Mail/MailDispatcher.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Mail/PlaceholderCatalog.php',

@@ -8,6 +8,7 @@ Version 2.0.2 ist ein Stabilitaets- und Wartungs-Release fuer Build-/Test-Prozes
 - PHP-Unit-Test-Baseline eingefuehrt
 - Testlauf-Command fuer Windows/CI ohne globales `php` gehaertet (`@php vendor/bin/phpunit`)
 - Repo-Guidelines auf zentrale Shared-Quelle umgestellt
+- Chat-Handover aus dem Multi-Chat-Plugin dokumentiert: Booking-Overlay kann geoeffnet und mit Prefill-Daten befuellt werden
 
 ## Kompatibilitaet
 

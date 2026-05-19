@@ -1,5 +1,6 @@
 (function () {
   var popupRoots = [];
+  var pendingChatPrefill = null;
   var htmlLang = document.documentElement && document.documentElement.lang ? String(document.documentElement.lang) : '';
   var locale = htmlLang || navigator.language || 'de-DE';
   var weekStartsMonday = /^de(-|$)/i.test(locale);
@@ -37,7 +38,8 @@
       slots: [],
       selectedDayKey: '',
       currentMonth: null,
-      currentFormStep: 0
+      currentFormStep: 0,
+      prefill: null
     };
 
     if (!closeBtn || !overlay || !statusNode || !form || !slotStartInput || !dateStepNode || !timeStepNode) {
@@ -509,8 +511,11 @@
         bookingState.selectedSlot = '';
         slotStartInput.value = '';
 
+        applyPrefillToState();
+
         renderDateStep();
         renderTimeStep();
+        applyPrefillToForm();
         resetFormWizard();
         form.hidden = false;
         statusNode.textContent = '';
@@ -522,11 +527,14 @@
       });
     }
 
-    function openPopup() {
+    function openPopup(prefill) {
       if (autoCloseTimer) {
         clearTimeout(autoCloseTimer);
         autoCloseTimer = null;
       }
+
+      bookingState.prefill = normalizeBookingPrefill(prefill || pendingChatPrefill);
+      pendingChatPrefill = null;
 
       overlay.hidden = false;
       form.hidden = true;
@@ -553,11 +561,133 @@
       bookingState.active = false;
       bookingState.selectedSlot = '';
       bookingState.selectedDayKey = '';
+      bookingState.prefill = null;
       slotStartInput.value = '';
       form.hidden = true;
       clearValidationFeedback();
       resetFormWizard();
       setSubmitBusy(false);
+    }
+
+    function normalizeBookingPrefill(prefill) {
+      if (!prefill || typeof prefill !== 'object') {
+        return null;
+      }
+
+      var out = {};
+      var allowedContactMethods = ['phone', 'zoom', 'teams', 'whatsapp', 'email', 'telegram', 'signal'];
+
+      ['name', 'email', 'subject', 'note', 'contact_value', 'date', 'time', 'start_iso'].forEach(function (key) {
+        if (Object.prototype.hasOwnProperty.call(prefill, key)) {
+          var value = String(prefill[key] || '').trim();
+          if (value) {
+            out[key] = value;
+          }
+        }
+      });
+
+      var method = String(prefill.contact_method || '').trim().toLowerCase();
+      if (allowedContactMethods.indexOf(method) !== -1) {
+        out.contact_method = method;
+      }
+
+      return Object.keys(out).length ? out : null;
+    }
+
+    function applyPrefillToState() {
+      var prefill = bookingState.prefill;
+      if (!prefill) {
+        return;
+      }
+
+      var chosen = null;
+      if (prefill.start_iso) {
+        chosen = bookingState.slots.find(function (slot) {
+          return String(slot.start_iso || '') === String(prefill.start_iso);
+        }) || null;
+      }
+
+      // Exakte Zeit auf Tag
+      if (!chosen && prefill.date && prefill.time) {
+        chosen = bookingState.slots.find(function (slot) {
+          var start = new Date(slot.start_iso);
+          var dateKey = getDayKey(start);
+          var hh = String(start.getHours()).padStart(2, '0');
+          var mm = String(start.getMinutes()).padStart(2, '0');
+          return dateKey === prefill.date && (hh + ':' + mm) === prefill.time;
+        }) || null;
+
+        // NEU: Wenn kein exakter Treffer, suche ersten Slot nach Wunschzeit am Tag
+        if (!chosen) {
+          var wishedTimeParts = prefill.time.split(':');
+          if (wishedTimeParts.length === 2) {
+            var wishedHour = parseInt(wishedTimeParts[0], 10);
+            var wishedMinute = parseInt(wishedTimeParts[1], 10);
+            var slotsForDay = bookingState.slots.filter(function (slot) {
+              var start = new Date(slot.start_iso);
+              return getDayKey(start) === prefill.date;
+            });
+            slotsForDay.sort(function (a, b) {
+              return new Date(a.start_iso) - new Date(b.start_iso);
+            });
+            chosen = slotsForDay.find(function (slot) {
+              var start = new Date(slot.start_iso);
+              if (start.getHours() > wishedHour) return true;
+              if (start.getHours() === wishedHour && start.getMinutes() >= wishedMinute) return true;
+              return false;
+            }) || null;
+          }
+        }
+      }
+
+      // Nur Datum: erster Slot am Tag
+      if (!chosen && prefill.date) {
+        var firstForDay = bookingState.slots.find(function (slot) {
+          return getDayKey(new Date(slot.start_iso)) === prefill.date;
+        }) || null;
+        chosen = firstForDay;
+      }
+
+      if (!chosen) {
+        return;
+      }
+
+      bookingState.selectedDayKey = getDayKey(new Date(chosen.start_iso));
+      bookingState.selectedSlot = String(chosen.start_iso || '');
+      slotStartInput.value = bookingState.selectedSlot;
+      bookingState.currentMonth = startOfMonth(new Date(chosen.start_iso));
+    }
+
+    function applyPrefillToForm() {
+      var prefill = bookingState.prefill;
+      if (!prefill || !form) {
+        return;
+      }
+
+      var setField = function (name, value) {
+        if (!value) {
+          return;
+        }
+        var node = form.querySelector('[name="' + name + '"]');
+        if (node) {
+          node.value = value;
+        }
+      };
+
+      if (prefill.contact_method) {
+        setSelectedContactMethod(prefill.contact_method);
+        syncContactField();
+      }
+
+      setField('contact_value', prefill.contact_value || '');
+      setField('name', prefill.name || '');
+      setField('email', prefill.email || '');
+      setField('subject', prefill.subject || '');
+      setField('note', prefill.note || '');
+
+      if (bookingState.selectedSlot && prefill.name && prefill.email && prefill.subject && (prefill.contact_value || prefill.email)) {
+        bookingState.currentFormStep = 4;
+      }
     }
 
     function setSubmitBusy(isBusy) {
@@ -806,7 +936,7 @@
     updateFormWizard();
   }
 
-  function openFromLink() {
+  function openFromLink(prefill) {
     if (!popupRoots.length) {
       return;
     }
@@ -817,7 +947,7 @@
     var target = preferred || popupRoots[0];
 
     if (target && typeof target.restatifyOpenPopup === 'function') {
-      target.restatifyOpenPopup();
+      target.restatifyOpenPopup(prefill || null);
     }
 
     if (window.location.hash === '#restatify-booking' && window.history && typeof window.history.replaceState === 'function') {
@@ -828,8 +958,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-restatify-booking]').forEach(initBookingPopup);
 
-    document.addEventListener('restatify:booking-open', function () {
-      openFromLink();
+    document.addEventListener('restatify:booking-open', function (event) {
+      var detail = event && event.detail ? event.detail : null;
+      pendingChatPrefill = detail && detail.prefill ? detail.prefill : null;
+      openFromLink(pendingChatPrefill);
     });
 
     document.addEventListener('click', function (event) {

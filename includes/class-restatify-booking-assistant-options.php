@@ -141,6 +141,7 @@ final class Restatify_Booking_Assistant_Options {
         return [
             'api_base_url' => esc_url_raw((string) ($input['api_base_url'] ?? $defaults['api_base_url'])),
             'api_key' => sanitize_text_field((string) ($input['api_key'] ?? $defaults['api_key'])),
+            'privacy_policy_url' => esc_url_raw((string) ($input['privacy_policy_url'] ?? $defaults['privacy_policy_url'])),
             'disable_during_maintenance' => !empty($input['disable_during_maintenance']),
             'default_timezone' => sanitize_text_field((string) ($input['default_timezone'] ?? $defaults['default_timezone'])),
             'default_duration_minutes' => max(15, min(180, absint($input['default_duration_minutes'] ?? $defaults['default_duration_minutes']))),
@@ -450,6 +451,7 @@ final class Restatify_Booking_Assistant_Options {
         return [
             'api_base_url' => 'https://booking-api.example.com',
             'api_key' => '',
+            'privacy_policy_url' => function_exists('get_privacy_policy_url') ? (string) get_privacy_policy_url() : '',
             'disable_during_maintenance' => true,
             'default_timezone' => wp_timezone_string() ?: 'Europe/Berlin',
             'default_duration_minutes' => 30,
@@ -980,30 +982,16 @@ HTML;
     }
 
     private function get_default_contact_channels_raw(): string {
-        return 'phone|'
-            . __('Telefon', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . '|tel|+49...|'
-            . __('Telefonnummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . '|'
-            . __('Telefon: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . "\nwhatsapp|WhatsApp|tel|+49...|"
-            . __('Handynummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . '|WhatsApp: {value}'
-            . "\nteams|Microsoft Teams|email|name@example.com|"
-            . __('E-Mail-Adresse', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . '|'
-            . __('Teams Kontakt: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . "\nzoom|Zoom|email|name@example.com|"
-            . __('E-Mail-Adresse', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . '|'
-            . __('Zoom Kontakt: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . "\ngoogle_meet|Google Meet|email|name@example.com|"
-            . __('E-Mail-Adresse', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . '|'
-            . __('Google Meet Kontakt: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . "\nsignal|Signal|tel|+49...|"
-            . __('Handynummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)
-            . '|Signal: {value}';
+        if (class_exists('\\Restatify\\Shared\\Util\\BookingContactChannelProfiles', false)) {
+            return \Restatify\Shared\Util\BookingContactChannelProfiles::defaultRaw(
+                static function (string $value): string {
+                    return __($value, Restatify_Booking_Assistant_Constants::TEXT_DOMAIN);
+                }
+            );
+        }
+
+        return "phone|" . __('Telefon', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN) . "|tel|+49...|"
+            . __('Telefonnummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN) . "|" . __('Telefon: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN);
     }
 
     private function translate_option_string(string $value): string {

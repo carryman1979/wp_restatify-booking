@@ -12,40 +12,51 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-if (!defined('RESTATIFY_BOOKING_SHARED_VERSION')) {
-    define('RESTATIFY_BOOKING_SHARED_VERSION', '1.0.0');
+if (!defined('RESTATIFY_BOOKING_PLUGIN_DIR')) {
+    define('RESTATIFY_BOOKING_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
 
-$restatify_booking_require_first = static function (array $paths): bool {
-    foreach ($paths as $path) {
-        if (is_string($path) && $path !== '' && file_exists($path)) {
-            require_once $path;
-            return true;
+if (!defined('RESTATIFY_BOOKING_PLUGIN_FILE')) {
+    define('RESTATIFY_BOOKING_PLUGIN_FILE', __FILE__);
+}
+
+if (!defined('RESTATIFY_BOOKING_SHARED_VERSION')) {
+    define('RESTATIFY_BOOKING_SHARED_VERSION', '1.0.2');
+}
+
+require_once RESTATIFY_BOOKING_PLUGIN_DIR . 'includes/class-restatify-booking-shared-library.php';
+
+$restatify_booking_shared_root = restatify_booking_shared_bootstrap();
+
+$restatify_booking_require_all = static function (string $shared_root, array $relative_paths): bool {
+    foreach ($relative_paths as $relative_path) {
+        $full_path = $shared_root . '/src/php/' . ltrim((string) $relative_path, '/');
+        if (!file_exists($full_path)) {
+            return false;
         }
+
+        require_once $full_path;
     }
 
-    return false;
+    return true;
 };
 
-$restatify_booking_require_first([
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/SharedRegistry.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingChatTokens.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingPrefillSchema.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Contracts/BookingApiErrorCodes.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/PluginState.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/BootstrapGuard.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Runtime/RateLimiter.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/BookingContactMethodsResolver.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/BookingContactChannelProfiles.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/BookingContactChannels.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/TokenReplacer.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Mail/MailDispatcher.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Mail/PlaceholderCatalog.php',
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/I18n/PolylangAdapter.php',
-]);
-
-if (!$restatify_booking_require_first([
-    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/PrivacyLegalNotice.php',
+if (!$restatify_booking_require_all($restatify_booking_shared_root, [
+    'SharedRegistry.php',
+    'Contracts/BookingChatTokens.php',
+    'Contracts/BookingPrefillSchema.php',
+    'Contracts/BookingApiErrorCodes.php',
+    'Runtime/PluginState.php',
+    'Runtime/BootstrapGuard.php',
+    'Runtime/RateLimiter.php',
+    'Util/BookingContactMethodsResolver.php',
+    'Util/BookingContactChannelProfiles.php',
+    'Util/BookingContactChannels.php',
+    'Util/TokenReplacer.php',
+    'Mail/MailDispatcher.php',
+    'Mail/PlaceholderCatalog.php',
+    'I18n/PolylangAdapter.php',
+    'Util/PrivacyLegalNotice.php',
 ])) {
     throw new RuntimeException('Missing required shared dependency: wp_restatify-shared/src/php/Util/PrivacyLegalNotice.php');
 }
@@ -96,8 +107,8 @@ if (class_exists('\\Restatify\\Shared\\SharedRegistry', false)) {
     }
 
     if ($restatify_booking_shared_manager_class === null) {
-        $restatify_booking_require_first([
-            dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Migration/MigrationNoticeManager.php',
+        $restatify_booking_require_all($restatify_booking_shared_root, [
+            'Migration/MigrationNoticeManager.php',
         ]);
 
         if (class_exists('\\Restatify\\Shared\\Migration\\MigrationNoticeManager', false)) {

@@ -8,6 +8,8 @@ Version 2.0.4 konsolidiert die aktuellen Booking-Aenderungen in einen neuen patc
 - README auf den tatsaechlichen Plugin-Stand synchronisiert
 - Wiki-Release-Liste und Sidebar fuer den neuen Release erweitert
 - Release-Dokumentation fuer reproduzierbares Packaging aktualisiert
+- Hotfix-Rebuild ohne Versionssprung: bestehendes `2.0.4`-Artefakt ersetzt
+- Legal-Notice-Abhaengigkeit wird jetzt ueber zentrale, versionsgebundene Shared-Installation abgesichert
 
 ## Kompatibilitaet
 

@@ -155,6 +155,12 @@ Woechentliche Verfuegbarkeitszeilen:
 
 ## Changelog
 
+### 2.0.4
+
+- Hotfix rebuild without version bump: replaced defective 2.0.4 release package.
+- Added shared library installer/runtime resolver for versioned central shared path handling.
+- Added packaged shared install payload in release ZIP to ensure `PrivacyLegalNotice` is available during install/update.
+
 ### 2.0.2
 
 - Added PHP unit-test baseline and test runner hardening (`@php vendor/bin/phpunit`) for Windows/CI shells without global `php` in PATH.

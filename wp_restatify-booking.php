@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 2.0.3
+ * Version: 2.0.4
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -43,6 +43,12 @@ $restatify_booking_require_first([
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Mail/PlaceholderCatalog.php',
     dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/I18n/PolylangAdapter.php',
 ]);
+
+if (!$restatify_booking_require_first([
+    dirname(__DIR__, 3) . '/wp_restatify-shared/src/php/Util/PrivacyLegalNotice.php',
+])) {
+    throw new RuntimeException('Missing required shared dependency: wp_restatify-shared/src/php/Util/PrivacyLegalNotice.php');
+}
 
 if (class_exists('\\Restatify\\Shared\\Contracts\\BookingChatTokens', false)) {
     \Restatify\Shared\Contracts\BookingChatTokens::defineGlobalConstants();

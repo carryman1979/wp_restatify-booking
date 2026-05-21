@@ -65,6 +65,14 @@ final class Restatify_Booking_Assistant_Options {
         $register('Booking owner cancellation subject', (string) ($options['owner_cancellation_subject'] ?? ''), false);
         $register('Booking owner cancellation text body', (string) ($options['owner_cancellation_body'] ?? ''), true);
         $register('Booking owner cancellation HTML body', (string) ($options['owner_cancellation_html_body'] ?? ''), true);
+
+        $register('Booking popup trigger label', __('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup title', __('Gespräch buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+
+        if (class_exists('\\Restatify\\Shared\\Util\\PrivacyLegalNotice', false)) {
+            $privacy_legal_notice_class = '\\Restatify\\Shared\\Util\\PrivacyLegalNotice';
+            $privacy_legal_notice_class::registerPolylangStrings();
+        }
     }
 
     /**

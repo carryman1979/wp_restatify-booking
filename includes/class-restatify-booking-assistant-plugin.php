@@ -38,6 +38,7 @@ final class Restatify_Booking_Assistant_Plugin {
     public function register_hooks(): void {
         add_action('init', [$this, 'load_textdomain']);
         add_action('init', [$this, 'register_shortcode']);
+        add_action('init', [$this->options_service, 'register_polylang_strings']);
         add_action('admin_init', [$this->options_service, 'register_settings']);
         add_action('admin_init', [$this->options_service, 'register_polylang_strings']);
         add_action('admin_menu', [$this, 'register_admin_page']);

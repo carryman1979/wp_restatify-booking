@@ -7,7 +7,7 @@ Company: https://www.restatify.tech
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 2.0.2
+Version: 2.0.4
 
 ## Features
 

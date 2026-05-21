@@ -101,8 +101,8 @@ final class Restatify_Booking_Assistant_UI {
         }
 
         $atts = shortcode_atts([
-            'label' => __('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'title' => __('Gespräch buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'label' => $this->translate_polylang_string(__('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+            'title' => $this->translate_polylang_string(__('Gespräch buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
         ], $atts, 'restatify_booking_popup');
 
         return $this->render_popup_markup((string) $atts['label'], (string) $atts['title'], true, false);
@@ -122,8 +122,8 @@ final class Restatify_Booking_Assistant_UI {
         }
 
         echo $this->render_popup_markup(
-            __('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            __('Gespräch buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            $this->translate_polylang_string(__('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+            $this->translate_polylang_string(__('Gespräch buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
             false,
             true
         );
@@ -693,18 +693,35 @@ final class Restatify_Booking_Assistant_UI {
                         <button type="submit" class="restatify-booking__submit" hidden><?php esc_html_e('Jetzt reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
                     </form>
 
-                    <?php if ($privacy_policy_url !== '') : ?>
-                        <p class="restatify-booking__legal-notice">
-                            <?php esc_html_e('Mit der Nutzung dieses Buchungstools stimmst du unseren Datenschutzbestimmungen zu.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>
-                            <a href="<?php echo esc_url($privacy_policy_url); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Datenschutzerklärung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></a>.
-                        </p>
-                    <?php endif; ?>
+                    <?php
+                    $privacy_legal_notice_class = '\\Restatify\\Shared\\Util\\PrivacyLegalNotice';
+                    echo $privacy_legal_notice_class::renderDefault($privacy_policy_url, 'restatify-booking__legal-notice');
+                    ?>
                 </div>
             </div>
         </div>
         <?php
 
         return (string) ob_get_clean();
+    }
+
+    private function translate_polylang_string(string $value): string {
+        if ($value === '') {
+            return '';
+        }
+
+        if (class_exists('\\Restatify\\Shared\\I18n\\PolylangAdapter', false)) {
+            return \Restatify\Shared\I18n\PolylangAdapter::translate($value);
+        }
+
+        if (function_exists('pll__')) {
+            $translated = pll__($value);
+            if (is_string($translated) && $translated !== '') {
+                return $translated;
+            }
+        }
+
+        return $value;
     }
 }
 

@@ -80,6 +80,7 @@ Die jüngsten Änderungen fokussieren sich auf:
 
 ## Releases
 
+- [Release 2.0.4](Release-2.0.4)
 - [Release 2.0.3](Release-2.0.3)
 - [Release 2.0.2](Release-2.0.2)
 - [Release 2.0.0](Release-2.0.0)

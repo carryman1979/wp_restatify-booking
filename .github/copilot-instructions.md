@@ -7,6 +7,7 @@ Repo-specific requirements:
 - Do not break global booking trigger hash #restatify-booking.
 - Keep WordPress link picker compatibility for booking overlay entries.
 - Do not remove nonce/security checks from booking AJAX flows.
+- Keep shared loader order stable: local root shared first for dev, otherwise exact versioned shared under plugins/mu-plugins, never mixed in one request.
 
 Required checks:
 - composer run test:unit:php

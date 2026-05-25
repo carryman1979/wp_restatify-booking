@@ -1,6 +1,7 @@
 ## Booking Assistant
 
 - [Home](Home)
+- [Release 2.0.5](Release-2.0.5)
 - [Release 2.0.4](Release-2.0.4)
 - [Release 2.0.3](Release-2.0.3)
 - [Release 2.0.2](Release-2.0.2)

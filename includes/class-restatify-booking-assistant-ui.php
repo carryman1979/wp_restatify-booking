@@ -172,7 +172,10 @@ final class Restatify_Booking_Assistant_UI {
 
         $options = $this->options_service->get_options();
         $default_options = $this->options_service->get_default_options();
-        $shared_mail_editor_url = esc_url(home_url('/wp_restatify-shared/src/js/mail-template-editor.js'));
+        $shared_base_url = defined('RESTATIFY_BOOKING_SHARED_BASE_URL') && is_string(RESTATIFY_BOOKING_SHARED_BASE_URL) && RESTATIFY_BOOKING_SHARED_BASE_URL !== ''
+            ? RESTATIFY_BOOKING_SHARED_BASE_URL
+            : home_url('/wp_restatify-shared');
+        $shared_mail_editor_url = esc_url(rtrim($shared_base_url, '/') . '/src/js/mail-template-editor.js');
         $calendar_sources = is_array($options['api_calendar_sources'] ?? null) ? $options['api_calendar_sources'] : [];
         if (count($calendar_sources) === 0) {
             $calendar_sources = $this->options_service->parse_calendar_sources_raw((string) ($options['api_calendar_sources_raw'] ?? ''));

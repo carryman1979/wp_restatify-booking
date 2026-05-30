@@ -7,6 +7,12 @@
 - UI-Referenz auf den Shared Mail-Template-Editor nutzt die aufgeloeste Shared-Base-URL.
 - Copilot-Repo-Richtlinie auf die Shared-Loader-Reihenfolge abgestimmt.
 
+## Release-Prep-Refresh (2026-05-30)
+
+- Kein Versionssprung: Release-Prep verbleibt auf `2.0.5`.
+- Booking-UI-/Theme-Polish (inkl. Dark-Theme-Feinschliff) konsolidiert.
+- API-Client-/Options-/UI-Refactorings und Test-Baseline fuer den koordinierten Rollout synchronisiert.
+
 ## Kompatibilitaet
 
 - Plugin-Version: `2.0.5`

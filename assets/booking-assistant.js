@@ -1,8 +1,11 @@
 (function () {
   var popupRoots = [];
   var pendingChatPrefill = null;
+  var runtime = (typeof restatifyBookingAssistant === 'object' && restatifyBookingAssistant) ? restatifyBookingAssistant : {};
   var htmlLang = document.documentElement && document.documentElement.lang ? String(document.documentElement.lang) : '';
-  var locale = htmlLang || navigator.language || 'de-DE';
+  var configuredLocale = runtime.locale ? String(runtime.locale) : '';
+  var locale = configuredLocale || htmlLang || navigator.language || 'de-DE';
+  var useHour12 = Object.prototype.hasOwnProperty.call(runtime, 'hour12') ? !!runtime.hour12 : undefined;
   var weekStartsMonday = /^de(-|$)/i.test(locale);
 
   function initBookingPopup(root) {
@@ -356,7 +359,7 @@
 
       var title = document.createElement('strong');
       title.className = 'restatify-booking__calendar-title';
-      title.textContent = month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      title.textContent = month.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 
       var next = document.createElement('button');
       next.type = 'button';
@@ -450,7 +453,11 @@
 
       daySlots.forEach(function (slot) {
         var startDate = new Date(slot.start_iso);
-        var label = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        var label = startDate.toLocaleTimeString(locale, {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: useHour12
+        });
 
         var button = document.createElement('button');
         button.type = 'button';

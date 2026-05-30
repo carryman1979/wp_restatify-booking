@@ -26,6 +26,12 @@ final class Restatify_Booking_Assistant_UI {
 
         $base_url = plugin_dir_url($this->plugin_file) . 'assets/';
         $base_path = plugin_dir_path($this->plugin_file) . 'assets/';
+        $shared_overlay_path = defined('RESTATIFY_BOOKING_SHARED_BASE_PATH')
+            ? rtrim((string) RESTATIFY_BOOKING_SHARED_BASE_PATH, '/') . '/src/css/overlay-window.css'
+            : '';
+        $shared_overlay_url = defined('RESTATIFY_BOOKING_SHARED_BASE_URL')
+            ? rtrim((string) RESTATIFY_BOOKING_SHARED_BASE_URL, '/') . '/src/css/overlay-window.css'
+            : '';
         $options = $this->options_service->get_options();
         if ($this->should_disable_during_maintenance($options)) {
             return;
@@ -36,10 +42,22 @@ final class Restatify_Booking_Assistant_UI {
         }
         $multi_chat_available = $this->is_multi_chat_overlay_chat_enabled();
 
+        $frontend_style_deps = [];
+
+        if ($shared_overlay_path !== '' && $shared_overlay_url !== '' && file_exists($shared_overlay_path)) {
+            wp_enqueue_style(
+                'restatify-shared-overlay-window',
+                $shared_overlay_url,
+                [],
+                (string) filemtime($shared_overlay_path)
+            );
+            $frontend_style_deps[] = 'restatify-shared-overlay-window';
+        }
+
         wp_enqueue_style(
             Restatify_Booking_Assistant_Constants::FRONTEND_ASSET_HANDLE,
             $base_url . 'booking-assistant.css',
-            [],
+            $frontend_style_deps,
             file_exists($base_path . 'booking-assistant.css') ? (string) filemtime($base_path . 'booking-assistant.css') : '1.0.0'
         );
 
@@ -55,6 +73,8 @@ final class Restatify_Booking_Assistant_UI {
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(Restatify_Booking_Assistant_Constants::NONCE_ACTION),
             'chatNonce' => wp_create_nonce('restatify_mco_chat_nonce'),
+            'locale' => $this->get_frontend_locale(),
+            'hour12' => $this->uses_12_hour_time_format(),
             'timezone' => (string) $options['default_timezone'],
             'durationMinutes' => (int) $options['default_duration_minutes'],
             'windowDays' => (int) $options['slot_window_days'],
@@ -64,27 +84,27 @@ final class Restatify_Booking_Assistant_UI {
                 'contactEmail' => $no_slots_contact_email,
             ],
             'strings' => [
-                'loading' => __('Freie Termine werden gesucht...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'empty' => __('Im ausgewählten Zeitraum wurden keine freien Termine gefunden.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'emptyRange' => __('Im konfigurierten Zeitraum sind aktuell keine freien Termine verfügbar.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'emptyChatHint' => __('Wenn es eilt, versuche bitte Kontakt über den Chat im Multi-Chat-Overlay aufzunehmen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'emptyEmailHint' => __('Alternativ schreibe uns bitte eine E-Mail an', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'contactValueLabelDefault' => __('Kontaktdaten', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'contactMoreLabel' => __('Mehr...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'contactLessLabel' => __('Weniger', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'reserve' => __('Termin reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'selectDay' => __('Tag im Kalender auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'pickTime' => __('Uhrzeit auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'success' => __('Reservierung eingegangen. Bitte prüfe deine E-Mails für die Details.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'error' => __('Reservierung fehlgeschlagen. Bitte versuche einen anderen Termin.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationGeneric' => __('Bitte prüfe deine Eingaben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationNameRequired' => __('Bitte deinen Namen eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationEmailRequired' => __('Bitte deine E-Mail-Adresse eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationEmailInvalid' => __('Bitte eine gültige E-Mail-Adresse eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationSubjectRequired' => __('Bitte einen Titel für den Termin eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationContactRequired' => __('Bitte Kontaktdaten eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationContactEmailInvalid' => __('Bitte eine gültige E-Mail-Adresse für den Kontaktkanal eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-                'validationContactUrlInvalid' => __('Bitte eine gültige URL für den Kontaktkanal eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+                'loading' => $this->translate_polylang_string(__('Freie Termine werden gesucht...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'empty' => $this->translate_polylang_string(__('Im ausgewählten Zeitraum wurden keine freien Termine gefunden.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'emptyRange' => $this->translate_polylang_string(__('Im konfigurierten Zeitraum sind aktuell keine freien Termine verfügbar.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'emptyChatHint' => $this->translate_polylang_string(__('Wenn es eilt, versuche bitte Kontakt über den Chat im Multi-Chat-Overlay aufzunehmen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'emptyEmailHint' => $this->translate_polylang_string(__('Alternativ schreibe uns bitte eine E-Mail an', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'contactValueLabelDefault' => $this->translate_polylang_string(__('Kontaktdaten', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'contactMoreLabel' => $this->translate_polylang_string(__('Mehr...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'contactLessLabel' => $this->translate_polylang_string(__('Weniger', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'reserve' => $this->translate_polylang_string(__('Termin reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'selectDay' => $this->translate_polylang_string(__('Tag im Kalender auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'pickTime' => $this->translate_polylang_string(__('Uhrzeit auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'success' => $this->translate_polylang_string(__('Reservierung eingegangen. Bitte prüfe deine E-Mails für die Details.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'error' => $this->translate_polylang_string(__('Reservierung fehlgeschlagen. Bitte versuche einen anderen Termin.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationGeneric' => $this->translate_polylang_string(__('Bitte prüfe deine Eingaben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationNameRequired' => $this->translate_polylang_string(__('Bitte deinen Namen eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationEmailRequired' => $this->translate_polylang_string(__('Bitte deine E-Mail-Adresse eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationEmailInvalid' => $this->translate_polylang_string(__('Bitte eine gültige E-Mail-Adresse eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationSubjectRequired' => $this->translate_polylang_string(__('Bitte einen Titel für den Termin eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationContactRequired' => $this->translate_polylang_string(__('Bitte Kontaktdaten eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationContactEmailInvalid' => $this->translate_polylang_string(__('Bitte eine gültige E-Mail-Adresse für den Kontaktkanal eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+                'validationContactUrlInvalid' => $this->translate_polylang_string(__('Bitte eine gültige URL für den Kontaktkanal eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
             ],
         ]);
     }
@@ -565,14 +585,14 @@ final class Restatify_Booking_Assistant_UI {
         $options = $this->options_service->get_options();
         $contact_channels = $this->options_service->get_contact_channels($options);
         $prominent_count = max(1, min(6, absint($options['contact_prominent_count'] ?? 3)));
-        $default_contact_value_label = __('Kontaktdaten', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN);
+        $default_contact_value_label = $this->translate_polylang_string(__('Kontaktdaten', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN));
         $default_channel = $contact_channels[0] ?? [
             'key' => 'phone',
-            'label' => __('Telefon', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'label' => $this->translate_polylang_string(__('Telefon', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
             'input_kind' => 'tel',
             'placeholder' => '+49...',
-            'value_label' => __('Telefonnummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
-            'ics_template' => __('Telefon: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN),
+            'value_label' => $this->translate_polylang_string(__('Telefonnummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
+            'ics_template' => $this->translate_polylang_string(__('Telefon: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN)),
         ];
         $default_input_kind = (string) ($default_channel['input_kind'] ?? 'tel');
         $default_input_type = in_array($default_input_kind, ['email', 'url', 'tel', 'text'], true) ? $default_input_kind : 'text';
@@ -590,8 +610,10 @@ final class Restatify_Booking_Assistant_UI {
             <?php endif; ?>
             <div class="restatify-booking__overlay" data-booking-overlay hidden>
                 <div class="restatify-booking__dialog" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr($title); ?>">
-                    <button type="button" class="restatify-booking__close" data-booking-close aria-label="<?php esc_attr_e('Schließen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>">&times;</button>
-                    <h3 class="restatify-booking__title"><?php echo esc_html($title); ?></h3>
+                    <div class="restatify-booking__header">
+                        <h3 class="restatify-booking__title"><?php echo esc_html($title); ?></h3>
+                        <button type="button" class="restatify-booking__close" data-booking-close aria-label="<?php echo esc_attr($this->translate_polylang_string(__('Schließen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?>">&times;</button>
+                    </div>
 
                     <div class="restatify-booking__status" data-booking-status></div>
 
@@ -600,18 +622,18 @@ final class Restatify_Booking_Assistant_UI {
                         <div class="restatify-booking__wizard" data-booking-wizard>
                             <div class="restatify-booking__wizard-track" data-booking-steps>
                                 <section class="restatify-booking__wizard-step" data-booking-step>
-                                    <p class="restatify-booking__times-heading"><?php esc_html_e('Tag im Kalender auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                                    <p class="restatify-booking__times-heading"><?php echo esc_html($this->translate_polylang_string(__('Tag im Kalender auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></p>
                                     <div class="restatify-booking__calendar" data-booking-calendar></div>
                                 </section>
 
                                 <section class="restatify-booking__wizard-step" data-booking-step>
-                                    <p class="restatify-booking__times-heading"><?php esc_html_e('Uhrzeit auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></p>
+                                    <p class="restatify-booking__times-heading"><?php echo esc_html($this->translate_polylang_string(__('Uhrzeit auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></p>
                                     <div class="restatify-booking__times" data-booking-times></div>
                                 </section>
 
                                 <section class="restatify-booking__wizard-step" data-booking-step>
                                     <div class="restatify-booking__contact-block">
-                                        <span class="restatify-booking__contact-heading"><?php esc_html_e('Bevorzugter Kontaktkanal', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <span class="restatify-booking__contact-heading"><?php echo esc_html($this->translate_polylang_string(__('Bevorzugter Kontaktkanal', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></span>
                                         <input type="hidden" name="contact_method" data-contact-method value="<?php echo esc_attr((string) $default_channel['key']); ?>" required>
                                         <div class="restatify-booking__contact-channels<?php echo count($contact_channels) > $prominent_count ? ' is-collapsed' : ''; ?>" data-contact-channels>
                                             <?php foreach ($contact_channels as $index => $channel) :
@@ -664,22 +686,22 @@ final class Restatify_Booking_Assistant_UI {
 
                                 <section class="restatify-booking__wizard-step" data-booking-step>
                                     <label>
-                                        <span><?php esc_html_e('Name', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <span><?php echo esc_html($this->translate_polylang_string(__('Name', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></span>
                                         <input type="text" name="name" required maxlength="190">
                                     </label>
                                     <label>
-                                        <span><?php esc_html_e('E-Mail', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <span><?php echo esc_html($this->translate_polylang_string(__('E-Mail', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></span>
                                         <input type="email" name="email" required maxlength="190">
                                     </label>
                                 </section>
 
                                 <section class="restatify-booking__wizard-step" data-booking-step>
                                     <label>
-                                        <span><?php esc_html_e('Titel für den Termin', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
-                                        <input type="text" name="subject" required maxlength="190" placeholder="<?php esc_attr_e('z.B. Erstberatung Immobilienkauf', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?>">
+                                        <span><?php echo esc_html($this->translate_polylang_string(__('Titel für den Termin', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></span>
+                                        <input type="text" name="subject" required maxlength="190" placeholder="<?php echo esc_attr($this->translate_polylang_string(__('z.B. Erstberatung Immobilienkauf', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?>">
                                     </label>
                                     <label>
-                                        <span><?php esc_html_e('Freie Beschreibung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></span>
+                                        <span><?php echo esc_html($this->translate_polylang_string(__('Freie Beschreibung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></span>
                                         <textarea name="note" rows="4" maxlength="1000"></textarea>
                                     </label>
                                 </section>
@@ -687,13 +709,13 @@ final class Restatify_Booking_Assistant_UI {
                         </div>
 
                         <div class="restatify-booking__wizard-nav">
-                            <button type="button" class="restatify-booking__wizard-btn" data-step-prev hidden><?php esc_html_e('Zurück', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                            <button type="button" class="restatify-booking__wizard-btn" data-step-prev hidden><?php echo esc_html($this->translate_polylang_string(__('Zurück', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></button>
                             <span class="restatify-booking__wizard-indicator" data-step-indicator>1/5</span>
-                            <button type="button" class="restatify-booking__wizard-btn" data-step-next><?php esc_html_e('Weiter', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                            <button type="button" class="restatify-booking__wizard-btn" data-step-next><?php echo esc_html($this->translate_polylang_string(__('Weiter', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></button>
                         </div>
 
-                        <button type="button" class="restatify-booking__wizard-btn" data-step-pick-slot hidden><?php esc_html_e('Ersatztermin wählen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
-                        <button type="submit" class="restatify-booking__submit" hidden><?php esc_html_e('Jetzt reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN); ?></button>
+                        <button type="button" class="restatify-booking__wizard-btn" data-step-pick-slot hidden><?php echo esc_html($this->translate_polylang_string(__('Ersatztermin wählen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></button>
+                        <button type="submit" class="restatify-booking__submit" hidden><?php echo esc_html($this->translate_polylang_string(__('Jetzt reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN))); ?></button>
                     </form>
 
                     <?php
@@ -725,6 +747,48 @@ final class Restatify_Booking_Assistant_UI {
         }
 
         return $value;
+    }
+
+    /**
+     * Resolves the active frontend locale from Polylang/WordPress.
+     */
+    private function get_frontend_locale(): string {
+        $locale = '';
+
+        if (function_exists('pll_current_language')) {
+            $polylang_locale = pll_current_language('locale');
+            if (is_string($polylang_locale) && $polylang_locale !== '') {
+                $locale = $polylang_locale;
+            }
+        }
+
+        if ($locale === '' && function_exists('determine_locale')) {
+            $determined = determine_locale();
+            if (is_string($determined) && $determined !== '') {
+                $locale = $determined;
+            }
+        }
+
+        if ($locale === '') {
+            $fallback = get_locale();
+            if (is_string($fallback) && $fallback !== '') {
+                $locale = $fallback;
+            }
+        }
+
+        if ($locale === '') {
+            $locale = 'de_DE';
+        }
+
+        return str_replace('_', '-', $locale);
+    }
+
+    /**
+     * Indicates whether localized time output should use 12-hour format.
+     */
+    private function uses_12_hour_time_format(): bool {
+        $time_format = (string) get_option('time_format', 'H:i');
+        return (bool) preg_match('/(?:^|[^\\\\])[gaA]/', $time_format);
     }
 }
 

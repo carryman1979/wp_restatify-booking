@@ -7,6 +7,12 @@
 - The UI reference to the shared mail-template editor now uses the resolved shared base URL.
 - Copilot repo guidance was aligned with the shared loader order policy.
 
+## Release-prep refresh (2026-05-30)
+
+- No version bump: release prep remains on `2.0.5`.
+- Booking UI/theme polish (including dark-theme related refinements) was consolidated.
+- API client/options/UI refactor paths and test scaffolding were synchronized for the coordinated rollout.
+
 ## Compatibility
 
 - Plugin version: `2.0.5`

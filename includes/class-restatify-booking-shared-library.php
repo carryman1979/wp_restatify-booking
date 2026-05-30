@@ -51,6 +51,7 @@ if (!function_exists('restatify_booking_shared_required_file_list')) {
     function restatify_booking_shared_required_file_list(): array {
         return [
             'SharedRegistry.php',
+            'Api/BookingApiErrorFormatter.php',
             'Contracts/BookingApiErrorCodes.php',
             'Contracts/BookingChatTokens.php',
             'Contracts/BookingPrefillSchema.php',

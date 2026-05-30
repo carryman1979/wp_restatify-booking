@@ -1,12 +1,12 @@
 .restatify-booking {
-  --rs-booking-accent: var(--wp--preset--color--primary, #ff6b00);
-  --rs-booking-accent-contrast: var(--wp--preset--color--base, #ffffff);
-  --rs-booking-surface: var(--wp--preset--color--base, #ffffff);
-  --rs-booking-text: var(--wp--preset--color--foreground, #0f172a);
+  --rs-booking-accent: var(--rs-color-primary, var(--wp--preset--color--primary, #ff6b00));
+  --rs-booking-accent-contrast: var(--rs-color-contrast, var(--wp--preset--color--base, #ffffff));
+  --rs-booking-surface: var(--rs-color-background, var(--wp--preset--color--base, #ffffff));
+  --rs-booking-text: var(--rs-color-text, var(--wp--preset--color--foreground, #0f172a));
   --rs-booking-muted-text: color-mix(in srgb, var(--rs-booking-text) 70%, #ffffff 30%);
   --rs-booking-border: color-mix(in srgb, var(--rs-booking-text) 14%, #ffffff 86%);
   --rs-booking-slot-bg: color-mix(in srgb, var(--rs-booking-surface) 90%, var(--rs-booking-text) 10%);
-  --rs-booking-overlay-bg: rgba(15, 23, 42, 0.52);
+  --rs-booking-overlay-bg: color-mix(in srgb, var(--rs-booking-text) 34%, transparent);
   --rs-booking-radius-lg: 16px;
   --rs-booking-radius-md: 10px;
   --rs-booking-font: inherit;
@@ -52,13 +52,18 @@
   font-family: var(--rs-booking-font);
 }
 
+.restatify-booking__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .restatify-booking__close {
-  position: absolute;
-  right: 0.6rem;
-  top: 0.35rem;
+  position: static;
   border: 0;
   background: transparent;
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   cursor: pointer;
   color: var(--rs-booking-text);
 }
@@ -81,6 +86,16 @@
   border-radius: var(--rs-booking-radius-md);
   padding: 0.6rem;
   background: var(--rs-booking-surface);
+}
+
+:root[data-rs-theme="dark"] .restatify-booking__calendar {
+  background: color-mix(in srgb, var(--rs-booking-surface) 88%, var(--rs-booking-text) 12%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-rs-theme="light"]) .restatify-booking__calendar {
+    background: color-mix(in srgb, var(--rs-booking-surface) 88%, var(--rs-booking-text) 12%);
+  }
 }
 
 .restatify-booking__calendar-header {
@@ -115,7 +130,8 @@
 .restatify-booking__calendar-weekdays span {
   text-align: center;
   font-size: 0.76rem;
-  color: var(--rs-booking-muted-text);
+  color: var(--rs-booking-text);
+  font-weight: 600;
   padding: 0.25rem 0;
 }
 
@@ -127,7 +143,7 @@
 .restatify-booking__calendar-day {
   border: 1px solid var(--rs-booking-border);
   border-radius: 8px;
-  background: var(--rs-booking-surface);
+  background: color-mix(in srgb, var(--rs-booking-surface) 98%, var(--rs-booking-text) 2%);
   color: var(--rs-booking-text);
   min-height: 2rem;
   cursor: pointer;
@@ -144,7 +160,9 @@
 }
 
 .restatify-booking__calendar-day.is-disabled {
-  opacity: 0.45;
+  opacity: 1;
+  color: color-mix(in srgb, var(--rs-booking-text) 52%, var(--rs-booking-surface) 48%);
+  background: color-mix(in srgb, var(--rs-booking-surface) 94%, var(--rs-booking-text) 6%);
   cursor: not-allowed;
 }
 
@@ -175,7 +193,7 @@
 .restatify-booking__times-empty {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--rs-booking-muted-text);
+  color: var(--rs-booking-text);
 }
 
 .restatify-booking__slot {
@@ -189,6 +207,20 @@
   cursor: pointer;
   color: var(--rs-booking-text);
   font-family: var(--rs-booking-font);
+}
+
+:root[data-rs-theme="dark"] .restatify-booking__calendar-day.is-available:not(.is-selected),
+:root[data-rs-theme="dark"] .restatify-booking__slot:not(.is-selected):not(:disabled) {
+  background: color-mix(in srgb, var(--rs-booking-surface) 74%, var(--rs-booking-text) 26%);
+  border-color: color-mix(in srgb, var(--rs-booking-accent) 44%, var(--rs-booking-border) 56%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-rs-theme="light"]) .restatify-booking__calendar-day.is-available:not(.is-selected),
+  :root:not([data-rs-theme="light"]) .restatify-booking__slot:not(.is-selected):not(:disabled) {
+    background: color-mix(in srgb, var(--rs-booking-surface) 74%, var(--rs-booking-text) 26%);
+    border-color: color-mix(in srgb, var(--rs-booking-accent) 44%, var(--rs-booking-border) 56%);
+  }
 }
 
 .restatify-booking__slot:hover {
@@ -221,6 +253,8 @@
   min-width: 100%;
   display: grid;
   gap: 0.6rem;
+  background: transparent;
+  color: inherit;
 }
 
 .restatify-booking__wizard-nav {
@@ -481,5 +515,4 @@
   -webkit-box-shadow: inset 0 0 0 1px var(--rs-booking-accent) !important;
   outline: none !important;
   background-image: none !important;
-}
 }

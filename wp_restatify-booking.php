@@ -136,6 +136,10 @@ $restatify_booking_require_shared('src/php/Mail/MailDispatcher.php', '\\Restatif
 $restatify_booking_require_shared('src/php/Mail/PlaceholderCatalog.php', '\\Restatify\\Shared\\Mail\\PlaceholderCatalog');
 $restatify_booking_require_shared('src/php/I18n/PolylangAdapter.php', '\\Restatify\\Shared\\I18n\\PolylangAdapter');
 
+if (!$restatify_booking_require_shared('src/php/Api/BookingApiErrorFormatter.php', '\\Restatify\\Shared\\Api\\BookingApiErrorFormatter')) {
+    throw new RuntimeException('Missing required shared dependency: wp_restatify-shared/src/php/Api/BookingApiErrorFormatter.php');
+}
+
 if (!$restatify_booking_require_shared('src/php/Util/PrivacyLegalNotice.php', '\\Restatify\\Shared\\Util\\PrivacyLegalNotice')) {
     throw new RuntimeException('Missing required shared dependency: wp_restatify-shared/src/php/Util/PrivacyLegalNotice.php');
 }

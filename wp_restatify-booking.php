@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Restatify Booking Assistant
  * Description: Manual slot search + reservation popup for WordPress, backed by Restatify Booking API.
- * Version: 2.0.5
+ * Version: 2.0.6
  * Author: Restatify
  * License: GPL-2.0-or-later
  * Text Domain: restatify-booking-assistant
@@ -257,3 +257,4 @@ function restatify_booking_ai_handle_message(string $message): string {
     return RESTATIFY_BOOKING_OPEN_TOKEN . ' ' . __('I am opening the booking tool now. Please choose a free slot, enter your details, and confirm. I will then submit it to the calendar API.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN);
 }
 }
+

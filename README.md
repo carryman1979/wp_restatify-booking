@@ -7,7 +7,7 @@ Company: https://www.restatify.tech
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 2.0.5
+Version: 2.0.6
 
 ## Features
 
@@ -220,4 +220,5 @@ Woechentliche Verfuegbarkeitszeilen:
 - Polylang-Registrierung und Laufzeit-Uebersetzung fuer Autoresponder-Texte hinzugefuegt.
 - Overlay-Styles auf Site-CI/Theme-Farben per CSS-Variablen ausgerichtet.
 - Optionalen globalen Hash-basierten Oeffnungs-Trigger (`#restatify-booking`) hinzugefuegt.
+
 

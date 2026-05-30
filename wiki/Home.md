@@ -85,8 +85,7 @@ Die jüngsten Änderungen fokussieren sich auf:
 - API-Client-/Options-/UI-Refactorings fuer den koordinierten Rollout zusammengefuehrt.
 - Release-Notizen und Artefaktverweise fuer `2.0.5` aktualisiert.
 
-## Releases
-
+- [Release 2.0.6](Release-2.0.6)
 - [Release 2.0.5](Release-2.0.5)
 - [Release 2.0.4](Release-2.0.4)
 - [Release 2.0.3](Release-2.0.3)

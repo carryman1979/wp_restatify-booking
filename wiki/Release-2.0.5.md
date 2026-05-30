@@ -9,6 +9,12 @@ Version 2.0.5 vereinheitlicht die Shared-Aufloesung zwischen lokaler Entwicklung
 - Verbleibende UI-Referenzen auf shared Mail-Editor verwenden jetzt die aufgeloeste Shared-Base-URL.
 - Copilot-Repo-Beschreibung auf die Shared-Loader-Policy aktualisiert.
 
+## Release-prep refresh (2026-05-30)
+
+- Kein Versionssprung: Release-Prep verbleibt auf `2.0.5`.
+- UI-/Theme-Polish (inkl. Dark-Theme-Aspekten) und Admin-Flow-Aufraeumarbeiten nachgezogen.
+- API-Client-/Options-/UI-Refactorings und Test-Baseline fuer den koordinierten Rollout abgeglichen.
+
 ## Kompatibilitaet
 
 - Plugin-Version: `2.0.5`

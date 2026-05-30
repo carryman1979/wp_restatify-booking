@@ -7,7 +7,7 @@ Company: https://www.restatify.tech
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 2.0.4
+Version: 2.0.5
 
 ## Features
 
@@ -154,6 +154,19 @@ Woechentliche Verfuegbarkeitszeilen:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 2.0.5
+
+- Shared resolver and loader-order policy finalized for root-shared and exact-version fallback handling.
+- Booking admin/UI look-and-feel and dark-theme oriented polish were consolidated for the current rollout.
+- Booking API client/options/UI internals refactored in-place without changing public trigger behavior.
+- Release-prep docs and test scaffolding updated for the coordinated multi-repo release run.
+
+### 2.0.4
+
+- Hotfix rebuild without version bump: replaced defective 2.0.4 release package.
+- Added shared library installer/runtime resolver for versioned central shared path handling.
+- Added packaged shared install payload in release ZIP to ensure `PrivacyLegalNotice` is available during install/update.
 
 ### 2.0.2
 

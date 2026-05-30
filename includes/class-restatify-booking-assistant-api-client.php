@@ -78,7 +78,7 @@ final class Restatify_Booking_Assistant_Api_Client {
         $body = json_decode((string) wp_remote_retrieve_body($response), true);
 
         if ($status < 200 || $status >= 300) {
-            $message = $this->extract_error_message($body);
+            $message = \Restatify\Shared\Api\BookingApiErrorFormatter::extractMessage($body);
 
             if ($message === '') {
                 $message = __('Booking backend is currently unavailable. Please try again later.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN);
@@ -95,86 +95,5 @@ final class Restatify_Booking_Assistant_Api_Client {
         }
 
         return $body;
-    }
-
-    /**
-     * @param mixed $body
-     */
-    private function extract_error_message($body): string {
-        if (!is_array($body)) {
-            return '';
-        }
-
-        if (isset($body['message']) && is_string($body['message'])) {
-            return trim($body['message']);
-        }
-
-        if (isset($body['detail']) && is_array($body['detail'])) {
-            $structured = $body['detail'];
-            $code = isset($structured['code']) && is_string($structured['code']) ? trim($structured['code']) : '';
-            $message = isset($structured['message']) && is_string($structured['message']) ? trim($structured['message']) : '';
-
-            if ($message !== '') {
-                return $message;
-            }
-
-            if ($code !== '' && class_exists('\\Restatify\\Shared\\Contracts\\BookingApiErrorCodes', false)) {
-                $mapped = \Restatify\Shared\Contracts\BookingApiErrorCodes::defaultMessageForCode($code);
-                if ($mapped !== '') {
-                    return $mapped;
-                }
-            }
-        }
-
-        return $this->flatten_error_detail($body['detail'] ?? null);
-    }
-
-    /**
-     * @param mixed $detail
-     */
-    private function flatten_error_detail($detail): string {
-        if (is_string($detail)) {
-            return trim($detail);
-        }
-
-        if (!is_array($detail)) {
-            return '';
-        }
-
-        $messages = [];
-        foreach ($detail as $item) {
-            if (is_string($item)) {
-                $item = trim($item);
-                if ($item !== '') {
-                    $messages[] = $item;
-                }
-                continue;
-            }
-
-            if (!is_array($item)) {
-                continue;
-            }
-
-            $item_message = '';
-            if (isset($item['msg']) && is_string($item['msg'])) {
-                $item_message = trim($item['msg']);
-            } elseif (isset($item['message']) && is_string($item['message'])) {
-                $item_message = trim($item['message']);
-            }
-
-            $location = '';
-            if (isset($item['loc']) && is_array($item['loc'])) {
-                $location_parts = array_filter(array_map('strval', $item['loc']), static fn (string $part): bool => $part !== '');
-                if (count($location_parts) > 0) {
-                    $location = implode(' -> ', $location_parts) . ': ';
-                }
-            }
-
-            if ($item_message !== '') {
-                $messages[] = $location . $item_message;
-            }
-        }
-
-        return implode(' | ', array_values(array_unique($messages)));
     }
 }

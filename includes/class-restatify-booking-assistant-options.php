@@ -68,6 +68,41 @@ final class Restatify_Booking_Assistant_Options {
 
         $register('Booking popup trigger label', __('Termin finden', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
         $register('Booking popup title', __('Gespräch buchen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup close label', __('Schließen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup select day', __('Tag im Kalender auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup pick time', __('Uhrzeit auswählen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup preferred contact channel', __('Bevorzugter Kontaktkanal', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup contact details label', __('Kontaktdaten', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup phone label', __('Telefon', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup phone number label', __('Telefonnummer', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup phone ICS template', __('Telefon: {value}', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup name label', __('Name', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup email label', __('E-Mail', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup subject label', __('Titel für den Termin', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup subject placeholder', __('z.B. Erstberatung Immobilienkauf', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup note label', __('Freie Beschreibung', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup back button', __('Zurück', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup next button', __('Weiter', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup pick alternative slot button', __('Ersatztermin wählen', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup reserve now button', __('Jetzt reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup loading', __('Freie Termine werden gesucht...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup empty', __('Im ausgewählten Zeitraum wurden keine freien Termine gefunden.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup empty range', __('Im konfigurierten Zeitraum sind aktuell keine freien Termine verfügbar.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup empty chat hint', __('Wenn es eilt, versuche bitte Kontakt über den Chat im Multi-Chat-Overlay aufzunehmen.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), true);
+        $register('Booking popup empty email hint', __('Alternativ schreibe uns bitte eine E-Mail an', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup contact more label', __('Mehr...', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup contact less label', __('Weniger', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup reserve action', __('Termin reservieren', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup success', __('Reservierung eingegangen. Bitte prüfe deine E-Mails für die Details.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), true);
+        $register('Booking popup error', __('Reservierung fehlgeschlagen. Bitte versuche einen anderen Termin.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation generic', __('Bitte prüfe deine Eingaben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation name required', __('Bitte deinen Namen eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation email required', __('Bitte deine E-Mail-Adresse eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation email invalid', __('Bitte eine gültige E-Mail-Adresse eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation subject required', __('Bitte einen Titel für den Termin eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation contact required', __('Bitte Kontaktdaten eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation contact email invalid', __('Bitte eine gültige E-Mail-Adresse für den Kontaktkanal eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
+        $register('Booking popup validation contact URL invalid', __('Bitte eine gültige URL für den Kontaktkanal eingeben.', Restatify_Booking_Assistant_Constants::TEXT_DOMAIN), false);
 
         if (class_exists('\\Restatify\\Shared\\Util\\PrivacyLegalNotice', false)) {
             $privacy_legal_notice_class = '\\Restatify\\Shared\\Util\\PrivacyLegalNotice';

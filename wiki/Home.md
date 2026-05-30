@@ -77,9 +77,17 @@ Die jüngsten Änderungen fokussieren sich auf:
 - geringere Fehleranfälligkeit bei der Pflege
 - rückwärtskompatible Weiterentwicklung bestehender Optionsformate
 - saubere Chat-zu-Booking-Uebergabe mit Overlay-Open und Prefill aus Session 1
+- UI-/Theme-Polish (inkl. Dark-Theme-Anpassungen) bei stabilen Trigger- und API-Pfaden
+
+## Release-Prep Status (2026-05-30)
+
+- Dokumentation fuer den aktuellen Hotfix-Stand ohne Versionssprung synchronisiert.
+- API-Client-/Options-/UI-Refactorings fuer den koordinierten Rollout zusammengefuehrt.
+- Release-Notizen und Artefaktverweise fuer `2.0.5` aktualisiert.
 
 ## Releases
 
+- [Release 2.0.5](Release-2.0.5)
 - [Release 2.0.4](Release-2.0.4)
 - [Release 2.0.3](Release-2.0.3)
 - [Release 2.0.2](Release-2.0.2)

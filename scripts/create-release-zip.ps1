@@ -20,6 +20,13 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = $versionMatch.Groups[1].Value.Trim()
 }
 
+$sharedVersionMatch = [regex]::Match((Get-Content $pluginMainFile -Raw), "RESTATIFY_BOOKING_SHARED_VERSION'\s*,\s*'([^']+)'")
+if (-not $sharedVersionMatch.Success) {
+    throw 'Could not detect RESTATIFY_BOOKING_SHARED_VERSION from wp_restatify-booking.php'
+}
+
+$sharedVersion = $sharedVersionMatch.Groups[1].Value.Trim()
+
 $releaseDir = Join-Path $pluginRoot 'release'
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 
@@ -49,6 +56,16 @@ $excludeNames = @(
 Get-ChildItem -Path $pluginRoot -Force | Where-Object { $excludeNames -notcontains $_.Name } | ForEach-Object {
     Copy-Item $_.FullName -Destination $stagingDir -Recurse -Force
 }
+
+$sharedSourcePhpDir = Join-Path $pluginRoot '../../../wp_restatify-shared/src/php'
+$sharedSourcePhpDir = [System.IO.Path]::GetFullPath($sharedSourcePhpDir)
+if (-not (Test-Path $sharedSourcePhpDir)) {
+    throw "Shared source directory not found: $sharedSourcePhpDir"
+}
+
+$sharedTargetPhpDir = Join-Path $stagingDir "shared-install/wp_restatify-shared/versions/$sharedVersion/src/php"
+New-Item -ItemType Directory -Path $sharedTargetPhpDir -Force | Out-Null
+Copy-Item (Join-Path $sharedSourcePhpDir '*') -Destination $sharedTargetPhpDir -Recurse -Force
 
 $removeDirectoryNames = @('tests', 'test')
 Get-ChildItem -Path $stagingDir -Directory -Recurse | Where-Object {

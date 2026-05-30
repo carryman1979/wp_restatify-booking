@@ -16,6 +16,20 @@ if (!defined('RESTATIFY_BOOKING_SHARED_VERSION')) {
     define('RESTATIFY_BOOKING_SHARED_VERSION', '1.0.2');
 }
 
+if (!defined('RESTATIFY_BOOKING_PLUGIN_FILE')) {
+    define('RESTATIFY_BOOKING_PLUGIN_FILE', __FILE__);
+}
+
+if (!defined('RESTATIFY_BOOKING_PLUGIN_DIR')) {
+    define('RESTATIFY_BOOKING_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+
+if (!defined('RESTATIFY_BOOKING_PLUGIN_URL')) {
+    define('RESTATIFY_BOOKING_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+
+require_once __DIR__ . '/includes/class-restatify-booking-shared-library.php';
+
 $restatify_booking_require_first = static function (array $paths): bool {
     foreach ($paths as $path) {
         if (is_string($path) && $path !== '' && file_exists($path)) {
@@ -30,6 +44,11 @@ $restatify_booking_require_first = static function (array $paths): bool {
 $restatify_booking_local_shared_root = dirname(__DIR__, 3) . '/wp_restatify-shared';
 $restatify_booking_use_local_latest_shared = is_dir($restatify_booking_local_shared_root . '/src/php');
 $restatify_booking_versioned_shared_roots = [];
+$restatify_booking_bootstrapped_shared_base = '';
+
+if (function_exists('restatify_booking_shared_bootstrap')) {
+    $restatify_booking_bootstrapped_shared_base = (string) restatify_booking_shared_bootstrap();
+}
 
 if ($restatify_booking_use_local_latest_shared) {
     $restatify_booking_shared_base_path = $restatify_booking_local_shared_root;
@@ -86,11 +105,43 @@ if (!defined('RESTATIFY_BOOKING_SHARED_BASE_URL')) {
 }
 
 $restatify_booking_shared_candidates = static function (string $relativePath) use ($restatify_booking_shared_base_path): array {
-    if (!is_string($restatify_booking_shared_base_path) || $restatify_booking_shared_base_path === '') {
-        return [];
+    $relativePath = ltrim($relativePath, '/');
+    $paths = [];
+
+    if (is_string($restatify_booking_shared_base_path) && $restatify_booking_shared_base_path !== '') {
+        $paths[] = rtrim($restatify_booking_shared_base_path, '/') . '/' . $relativePath;
     }
 
-    return [rtrim($restatify_booking_shared_base_path, '/') . '/' . ltrim($relativePath, '/')];
+    return array_values(array_unique($paths));
+};
+
+$restatify_booking_packaged_shared_base = rtrim(RESTATIFY_BOOKING_PLUGIN_DIR, '/')
+    . '/shared-install/wp_restatify-shared/versions/'
+    . RESTATIFY_BOOKING_SHARED_VERSION;
+
+$restatify_booking_legacy_packaged_shared_base = rtrim(RESTATIFY_BOOKING_PLUGIN_DIR, '/') . '/shared-install/wp_restatify-shared';
+
+$restatify_booking_shared_base_candidates = array_values(array_filter(array_unique([
+    $restatify_booking_shared_base_path,
+    $restatify_booking_bootstrapped_shared_base,
+    $restatify_booking_packaged_shared_base,
+    $restatify_booking_legacy_packaged_shared_base,
+    rtrim($restatify_booking_local_shared_root, '/'),
+])));
+
+$restatify_booking_shared_candidates = static function (string $relativePath) use ($restatify_booking_shared_base_candidates): array {
+    $relativePath = ltrim($relativePath, '/');
+    $paths = [];
+
+    foreach ($restatify_booking_shared_base_candidates as $basePath) {
+        if (!is_string($basePath) || $basePath === '') {
+            continue;
+        }
+
+        $paths[] = rtrim($basePath, '/') . '/' . $relativePath;
+    }
+
+    return array_values(array_unique($paths));
 };
 
 $restatify_booking_symbol_exists = static function (string $symbol): bool {

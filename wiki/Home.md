@@ -81,9 +81,9 @@ Die jüngsten Änderungen fokussieren sich auf:
 
 ## Release-Prep Status (2026-05-30)
 
-- Dokumentation fuer den aktuellen Hotfix-Stand ohne Versionssprung synchronisiert.
-- API-Client-/Options-/UI-Refactorings fuer den koordinierten Rollout zusammengefuehrt.
-- Release-Notizen und Artefaktverweise fuer `2.0.5` aktualisiert.
+- Dokumentation und Release-Notizen auf Version 2.0.6 aktualisiert.
+- API-Client-/Options-/UI-Refactorings fuer den finalen Rollout konsolidiert.
+- Release-ZIP fuer 2.0.6 wurde neu gebaut und als aktueller Stand veroeffentlicht.
 
 - [Release 2.0.6](Release-2.0.6)
 - [Release 2.0.5](Release-2.0.5)

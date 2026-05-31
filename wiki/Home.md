@@ -81,7 +81,7 @@ Die jüngsten Änderungen fokussieren sich auf:
 
 ## Release-Prep Status (2026-05-30)
 
-- Dokumentation und Release-Notizen auf Version 2.0.6 aktualisiert.
+Ja- Dokumentation und Release-Notizen auf Version 2.0.6 aktualisiert.
 - API-Client-/Options-/UI-Refactorings fuer den finalen Rollout konsolidiert.
 - Release-ZIP fuer 2.0.6 wurde neu gebaut und als aktueller Stand veroeffentlicht.
 

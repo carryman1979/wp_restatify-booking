@@ -7,7 +7,7 @@ Company: https://www.restatify.tech
 
 WordPress-Plugin fuer manuelle Terminsuche und Reservierungs-Popup.
 
-Version: 2.0.6
+Version: 2.1.0
 
 ## Features
 
@@ -154,6 +154,12 @@ Woechentliche Verfuegbarkeitszeilen:
 `mo|09:00-12:00,13:00-17:00`
 
 ## Changelog
+
+### 2.1.0
+
+- Booking-Autoresponder: ICS-Anhang wird jetzt mit stabiler `.ics`-Dateiendung erzeugt (kein `.tmp`-Leak mehr im Mail-Client).
+- Booking-Autoresponder: ICS-Zeilen werden RFC-konform escaped/gefaltet, um kaputte Kalendereintraege in Clients zu vermeiden.
+- Tests: Regressionstest fuer ICS-Anhang (Dateiendung + VEVENT-Grundstruktur) hinzugefuegt.
 
 ### 2.0.5
 

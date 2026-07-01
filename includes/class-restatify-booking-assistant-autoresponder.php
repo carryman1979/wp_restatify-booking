@@ -335,30 +335,76 @@ final class Restatify_Booking_Assistant_Autoresponder {
         $summary = trim($subject_line) !== '' ? ('Restatify: ' . $subject_line) : 'Restatify Gespraech';
         $description = "Name: {$name}\\nEmail: {$email}\\nKontaktkanal: {$contact_method}\\nKontakt: {$contact_detail}\\nNotiz: {$note}";
 
-        $ics = "BEGIN:VCALENDAR\r\n";
+        $ics = '';
+        $ics .= "BEGIN:VCALENDAR\r\n";
         $ics .= "VERSION:2.0\r\n";
         $ics .= "PRODID:-//Restatify//Booking Assistant//DE\r\n";
+        $ics .= "CALSCALE:GREGORIAN\r\n";
+        $ics .= "METHOD:PUBLISH\r\n";
         $ics .= "BEGIN:VEVENT\r\n";
-        $ics .= 'UID:' . sanitize_text_field($uid) . "\r\n";
-        $ics .= 'DTSTAMP:' . gmdate('Ymd\\THis\\Z') . "\r\n";
-        $ics .= 'DTSTART:' . gmdate('Ymd\\THis\\Z', $start->getTimestamp()) . "\r\n";
-        $ics .= 'DTEND:' . gmdate('Ymd\\THis\\Z', $end->getTimestamp()) . "\r\n";
-        $ics .= 'SUMMARY:' . $this->escape_ics_text($summary) . "\r\n";
-        $ics .= 'DESCRIPTION:' . $this->escape_ics_text($description) . "\r\n";
+        $ics .= $this->fold_ics_line('UID:' . sanitize_text_field($uid));
+        $ics .= $this->fold_ics_line('DTSTAMP:' . gmdate('Ymd\\THis\\Z'));
+        $ics .= $this->fold_ics_line('DTSTART:' . gmdate('Ymd\\THis\\Z', $start->getTimestamp()));
+        $ics .= $this->fold_ics_line('DTEND:' . gmdate('Ymd\\THis\\Z', $end->getTimestamp()));
+        $ics .= $this->fold_ics_line('SUMMARY:' . $this->escape_ics_text($summary));
+        $ics .= $this->fold_ics_line('DESCRIPTION:' . $this->escape_ics_text($description));
         $ics .= "END:VEVENT\r\n";
         $ics .= "END:VCALENDAR\r\n";
 
-        $tmp = wp_tempnam('restatify-booking.ics');
+        $tmp = wp_tempnam('restatify-booking');
         if (!$tmp) {
             return '';
         }
 
+        $target = $tmp . '.ics';
+        if (file_exists($target)) {
+            wp_delete_file($target);
+        }
+
+        if (@rename($tmp, $target)) {
+            $tmp = $target;
+        }
+
         $written = file_put_contents($tmp, $ics);
         if ($written === false) {
+            if (file_exists($tmp)) {
+                wp_delete_file($tmp);
+            }
             return '';
         }
 
         return $tmp;
+    }
+
+    private function fold_ics_line(string $line): string {
+        $max_bytes = 73;
+        $line = rtrim($line, "\r\n");
+        if ($line === '') {
+            return "\r\n";
+        }
+
+        $parts = [];
+        $remaining = $line;
+        while ($remaining !== '') {
+            if (strlen($remaining) <= $max_bytes) {
+                $parts[] = $remaining;
+                break;
+            }
+
+            $chunk = substr($remaining, 0, $max_bytes);
+            while (function_exists('mb_check_encoding') && !mb_check_encoding($chunk, 'UTF-8') && strlen($chunk) > 1) {
+                $chunk = substr($chunk, 0, -1);
+            }
+
+            if ($chunk === '') {
+                $chunk = substr($remaining, 0, 1);
+            }
+
+            $parts[] = $chunk;
+            $remaining = substr($remaining, strlen($chunk));
+        }
+
+        return implode("\r\n ", $parts) . "\r\n";
     }
 
     private function escape_ics_text(string $value): string {

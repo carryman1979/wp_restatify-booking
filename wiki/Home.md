@@ -79,12 +79,13 @@ Die jüngsten Änderungen fokussieren sich auf:
 - saubere Chat-zu-Booking-Uebergabe mit Overlay-Open und Prefill aus Session 1
 - UI-/Theme-Polish (inkl. Dark-Theme-Anpassungen) bei stabilen Trigger- und API-Pfaden
 
-## Release-Prep Status (2026-05-30)
+## Release-Prep Status (2026-07-01)
 
-- Dokumentation und Release-Notizen auf Version 2.0.6 aktualisiert.
-- API-Client-/Options-/UI-Refactorings fuer den finalen Rollout konsolidiert.
-- Release-ZIP fuer 2.0.6 wurde neu gebaut und als aktueller Stand veroeffentlicht.
+- Hotfix `2.1.0` vorbereitet (ICS-Attachment-Dateiname und Kalenderinhalt gehaertet).
+- Release-Notizen (DE/EN) und Wiki auf den neuen Stand aktualisiert.
+- PHPUnit-Regressionsabdeckung fuer den ICS-Mailanhang hinzugefuegt.
 
+- [Release 2.1.0](Release-2.1.0)
 - [Release 2.0.6](Release-2.0.6)
 - [Release 2.0.5](Release-2.0.5)
 - [Release 2.0.4](Release-2.0.4)

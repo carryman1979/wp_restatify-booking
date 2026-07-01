@@ -28,6 +28,18 @@ if (!function_exists('sanitize_text_field')) {
     }
 }
 
+if (!function_exists('sanitize_email')) {
+    function sanitize_email(string $email): string {
+        return trim($email);
+    }
+}
+
+if (!function_exists('is_email')) {
+    function is_email(string $email): bool {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+}
+
 if (!function_exists('sanitize_key')) {
     function sanitize_key(string $key): string {
         $key = strtolower(trim($key));
@@ -46,6 +58,120 @@ if (!function_exists('wp_json_encode')) {
     function wp_json_encode($value): string {
         $encoded = json_encode($value);
         return is_string($encoded) ? $encoded : '';
+    }
+}
+
+if (!function_exists('wp_specialchars_decode')) {
+    function wp_specialchars_decode(string $text, int $quote_style = ENT_NOQUOTES): string {
+        return htmlspecialchars_decode($text, $quote_style);
+    }
+}
+
+if (!function_exists('get_bloginfo')) {
+    function get_bloginfo(string $show = ''): string {
+        if ($show === 'name') {
+            return (string) ($GLOBALS['restatify_booking_test_blog_name'] ?? 'Restatify Test');
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('get_option')) {
+    function get_option(string $option, $default = false) {
+        if ($option === 'admin_email') {
+            return $GLOBALS['restatify_booking_test_admin_email'] ?? 'admin@example.test';
+        }
+
+        return $default;
+    }
+}
+
+if (!function_exists('wp_generate_uuid4')) {
+    function wp_generate_uuid4(): string {
+        return '11111111-2222-4333-8444-555555555555';
+    }
+}
+
+if (!function_exists('wp_date')) {
+    function wp_date(string $format, int $timestamp, ?DateTimeZone $timezone = null): string {
+        $tz = $timezone ?? new DateTimeZone('UTC');
+        $date = new DateTimeImmutable('@' . $timestamp);
+        $date = $date->setTimezone($tz);
+        return $date->format($format);
+    }
+}
+
+if (!function_exists('wp_tempnam')) {
+    function wp_tempnam(string $filename = ''): string {
+        unset($filename);
+        $path = tempnam(sys_get_temp_dir(), 'rsb_');
+        return is_string($path) ? $path : '';
+    }
+}
+
+if (!function_exists('wp_delete_file')) {
+    function wp_delete_file(string $file): bool {
+        if ($file === '' || !file_exists($file)) {
+            return false;
+        }
+
+        return (bool) @unlink($file);
+    }
+}
+
+if (!function_exists('add_filter')) {
+    function add_filter(string $hook_name, callable $callback): bool {
+        unset($hook_name, $callback);
+        return true;
+    }
+}
+
+if (!function_exists('remove_filter')) {
+    function remove_filter(string $hook_name, callable $callback): bool {
+        unset($hook_name, $callback);
+        return true;
+    }
+}
+
+if (!function_exists('add_action')) {
+    function add_action(string $hook_name, callable $callback): bool {
+        unset($hook_name, $callback);
+        return true;
+    }
+}
+
+if (!function_exists('remove_action')) {
+    function remove_action(string $hook_name, callable $callback): bool {
+        unset($hook_name, $callback);
+        return true;
+    }
+}
+
+if (!function_exists('wp_mail')) {
+    function wp_mail($to, string $subject, string $message, $headers = '', $attachments = []): bool {
+        $attachment_contents = [];
+        if (is_array($attachments)) {
+            foreach ($attachments as $attachment) {
+                if (is_string($attachment) && $attachment !== '' && file_exists($attachment)) {
+                    $content = file_get_contents($attachment);
+                    if (is_string($content)) {
+                        $attachment_contents[$attachment] = $content;
+                    }
+                }
+            }
+        }
+
+        $GLOBALS['restatify_booking_test_sent_mails'][] = [
+            'to' => $to,
+            'subject' => $subject,
+            'message' => $message,
+            'headers' => $headers,
+            'attachments' => is_array($attachments) ? $attachments : [],
+            'attachment_contents' => $attachment_contents,
+        ];
+
+        return true;
     }
 }
 
@@ -230,4 +356,5 @@ if (!class_exists('\Restatify\\Shared\\Api\\BookingApiErrorFormatter', false)) {
 
 require_once dirname(__DIR__) . '/includes/class-restatify-booking-assistant-constants.php';
 require_once dirname(__DIR__) . '/includes/class-restatify-booking-assistant-api-client.php';
+require_once dirname(__DIR__) . '/includes/class-restatify-booking-assistant-autoresponder.php';
 require_once dirname(__DIR__) . '/includes/class-restatify-booking-assistant-ui.php';

@@ -84,6 +84,7 @@ Die jüngsten Änderungen fokussieren sich auf:
 - Hotfix `2.1.0` vorbereitet (ICS-Attachment-Dateiname und Kalenderinhalt gehaertet).
 - Release-Notizen (DE/EN) und Wiki auf den neuen Stand aktualisiert.
 - PHPUnit-Regressionsabdeckung fuer den ICS-Mailanhang hinzugefuegt.
+- Historischer Release-Stand `2.0.6` (API-Client-/Options-/UI-Konsolidierung) bleibt in den Release-Seiten dokumentiert.
 
 - [Release 2.1.0](Release-2.1.0)
 - [Release 2.0.6](Release-2.0.6)

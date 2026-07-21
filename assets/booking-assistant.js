@@ -943,7 +943,7 @@
     updateFormWizard();
   }
 
-  function openFromLink(prefill) {
+    function openFromLink(prefill) {
     if (!popupRoots.length) {
       return;
     }
